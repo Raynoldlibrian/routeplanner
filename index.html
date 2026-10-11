@@ -19,6 +19,9 @@ main{display:grid;grid-template-rows:3fr 1fr;min-height:0;min-width:0}
 #info .lk{flex:0 0 170px;display:flex;flex-direction:column;align-items:center;text-align:center;padding:0 4px}
 #info .ln{height:6px;width:100%;margin-top:13px;border-radius:3px}
 #info .lk b{font-size:12px;margin-top:2px}
+#info .ri{width:100%;margin-top:4px;font-size:12px;padding:3px 6px}
+#tg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+#tg button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 aside{display:flex;flex-direction:column;background:#fff;border-right:1px solid var(--line);min-height:0}
 #map{height:100%;min-height:0}
 .hd{padding:12px;border-bottom:1px solid var(--line);display:grid;gap:8px}
@@ -70,6 +73,7 @@ const esc=t=>String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 function load(){try{return JSON.parse(localStorage.getItem('rp1'))}catch(e){return null}}
 function save(){try{localStorage.setItem('rp1',JSON.stringify(S))}catch(e){}}
 let S=load()||{event:'Event baru',prof:'foot',speed:3,color:'#e8590c',pts:[],pos:[],park:[],nid:1,view:[-0.3749,102.5456,15]};
+S.show=S.show||{rute:1,pos:1,park:1};
 let tab='rute',arm=null,sel=null,R={dist:0,names:[],legs:[],err:''},rid=0,tt;
 
 const map=L.map('map').setView([S.view[0],S.view[1]],S.view[2]);
@@ -101,7 +105,7 @@ async function route(){
     if(j.code!=='Ok')throw 0;
     const rt=j.routes[0],names=[];
     const inf=[];
-    const legs=rt.legs.map(l=>{const cs=[],ln=[];l.steps.forEach(s=>{s.geometry.coordinates.forEach(x=>cs.push([x[1],x[0]]));if(s.name&&ln[ln.length-1]!==s.name)ln.push(s.name);if(s.name&&names[names.length-1]!==s.name)names.push(s.name)});inf.push({d:l.distance,n:ln});return cs});
+    const legs=rt.legs.map(l=>{const cs=[],ln=[];let u=0;l.steps.forEach(s=>{if(!s.name&&s.distance>=40)u=1;s.geometry.coordinates.forEach(x=>cs.push([x[1],x[0]]));if(s.name&&ln[ln.length-1]!==s.name)ln.push(s.name);if(s.name&&names[names.length-1]!==s.name)names.push(s.name)});inf.push({d:l.distance,n:ln,u});return cs});
     R={dist:rt.distance,names,legs,info:inf,err:''};
   }catch(e){
     if(id!==rid)return;
@@ -118,7 +122,7 @@ function addVia(ll){
 function drawRoute(){
   gR.clearLayers();
   const L2=legsArr();
-  if(S.pts.length<2)return;
+  if(S.pts.length<2||!S.show.rute)return;
   const all=[].concat(...L2);
   const cas=L.polyline(all,{color:'#fff',weight:13,opacity:.95,lineCap:'round',lineJoin:'round',interactive:tab==='rute'}).addTo(gR);
   L.polyline(all,{color:S.color,weight:8,opacity:.9,lineCap:'round',lineJoin:'round',dashArray:R.err?'2 10':null,interactive:false}).addTo(gR);
@@ -137,23 +141,27 @@ function stats(){
 /* ---------- strip informasi rute ---------- */
 function info(){
   const e=$('#info');if(!e)return;
+  if(!S.show.rute){e.innerHTML='<div class="mut">Rute sedang disembunyikan. Aktifkan tombol Rute untuk melihat ringkasannya.</div>';return}
   const st=[];S.pts.forEach((p,i)=>{if(!p.via)st.push(i)});
   if(st.length<2){e.innerHTML='<div class="mut">Rute tergambar di sini setelah ada dua titik.</div>';return}
   const sg=[];
   for(let k=0;k<st.length-1;k++){
-    let d=0,n=[];
+    let d=0,n=[],u=0;
     for(let i=st[k];i<st[k+1];i++){
       const l=(R.info||[])[i];
-      if(l){d+=l.d;l.n.forEach(x=>{if(n[n.length-1]!==x)n.push(x)})}
-      else d+=map.distance([S.pts[i].lat,S.pts[i].lng],[S.pts[i+1].lat,S.pts[i+1].lng]);
+      if(l){d+=l.d;if(l.u)u=1;l.n.forEach(x=>{if(n[n.length-1]!==x)n.push(x)})}
+      else{u=1;d+=map.distance([S.pts[i].lat,S.pts[i].lng],[S.pts[i+1].lat,S.pts[i+1].lng])}
     }
-    sg.push({d,n});
+    sg.push({d,n,u,pi:st[k]});
   }
   let h=`<div class="tot"><b>${esc(S.event)}</b><br>${fmt()}</div>`;
   st.forEach((pi,k)=>{
-    const p=S.pts[pi];
+    const p=S.pts[pi],g=sg[k];
     h+=`<div class="sp" data-i="${pi}"><div class="c" style="background:${k===0?'#14263b':k===st.length-1?'#2f9e44':S.color}">${k+1}</div><div class="nm">${esc(p.name||'Titik '+(k+1))}</div></div>`;
-    if(sg[k])h+=`<div class="lk"><div class="ln" style="background:${S.color}"></div><div class="nm">${sg[k].n.length?sg[k].n.map(esc).join(' → '):'<i>jalan tanpa nama</i>'}</div><b>${sg[k].d>=1000?(sg[k].d/1000).toFixed(2)+' km':Math.round(sg[k].d)+' m'}</b></div>`;
+    if(g){
+      const need=!g.n.length||g.u;
+      h+=`<div class="lk"><div class="ln" style="background:${S.color}"></div>${g.n.length?`<div class="nm">${g.n.map(esc).join(' → ')}</div>`:''}${need?`<input class="ri" data-r="${g.pi}" value="${esc(S.pts[g.pi].road||'')}" placeholder="Nama jalan (isi manual)">`:''}<b>${g.d>=1000?(g.d/1000).toFixed(2)+' km':Math.round(g.d)+' m'}</b></div>`;
+    }
   });
   e.innerHTML=h;
 }
@@ -161,12 +169,16 @@ $('#info').addEventListener('click',e=>{
   const b=e.target.closest('.sp');if(!b)return;
   const p=S.pts[+b.dataset.i];if(p)map.setView([p.lat,p.lng],Math.max(map.getZoom(),16));
 });
+$('#info').addEventListener('input',e=>{
+  const i=e.target.dataset.r;if(i==null)return;
+  if(S.pts[+i]){S.pts[+i].road=e.target.value;save()}
+});
 
 /* ---------- gambar marker, pos, parkir ---------- */
 function draw(){
   gM.clearLayers();gP.clearLayers();gK.clearLayers();gE.clearLayers();drawRoute();
   let k=0;
-  S.pts.forEach((p,i)=>{
+  S.show.rute&&S.pts.forEach((p,i)=>{
     if(p.via&&tab!=='rute')return;
     if(!p.via)k++;
     const first=i===0,last=i===S.pts.length-1&&i>0;
@@ -175,12 +187,12 @@ function draw(){
     m.on('dragend',()=>{const q=m.getLatLng();p.lat=q.lat;p.lng=q.lng;commit()});
     m.on('contextmenu',()=>{S.pts=S.pts.filter(x=>x!==p);commit()});
   });
-  S.pos.forEach(p=>{
+  S.show.pos&&S.pos.forEach(p=>{
     const m=L.marker([p.lat,p.lng],{draggable:true,icon:ico('p','P'+p.id,30)}).addTo(gP);
     m.bindPopup(`<b>${esc(p.name)}</b><br>${esc(p.tugas)}<br>${esc(p.personil)} • ${esc(p.jam)}`);
     m.on('dragend',()=>{const q=m.getLatLng();p.lat=q.lat;p.lng=q.lng;save()});
   });
-  S.park.forEach(a=>{
+  S.show.park&&S.park.forEach(a=>{
     const pg=L.polygon(a.pts,{color:'#1c7ed6',weight:sel===a.id?3:2,fillOpacity:sel===a.id?.32:.2,interactive:tab==='parkir'}).addTo(gK);
     pg.bindTooltip(esc(a.name),{permanent:true,direction:'center',className:'tt'});
     pg.on('click',e=>{L.DomEvent.stopPropagation(e);sel=a.id;draw();ui()});
@@ -199,15 +211,15 @@ function draw(){
 map.on('click',e=>{
   if(arm==='pos'){
     S.pos.push({id:S.nid++,name:'Pos baru',lat:e.latlng.lat,lng:e.latlng.lng,personil:'2 orang',tugas:'Pengamanan',jam:'07.00-11.00'});
-    arm=null;map.getContainer().style.cursor='';commit();return;
+    S.show.pos=1;arm=null;map.getContainer().style.cursor='';commit();return;
   }
-  if(tab==='rute'){S.pts.push({id:S.nid++,lat:e.latlng.lat,lng:e.latlng.lng,name:''});commit();return}
+  if(tab==='rute'){S.show.rute=1;S.pts.push({id:S.nid++,lat:e.latlng.lat,lng:e.latlng.lng,name:''});commit();return}
   if(tab==='parkir'&&sel){sel=null;draw();ui()}
 });
 function addPark(){
   const c=map.getCenter(),d=0.00018,dl=d/Math.cos(c.lat*Math.PI/180),id=S.nid++;
   S.park.push({id,name:'Parkir '+(S.park.length+1),kapasitas:'',pts:[[c.lat-d,c.lng-dl],[c.lat-d,c.lng+dl],[c.lat+d,c.lng+dl],[c.lat+d,c.lng-dl]]});
-  sel=id;commit();toast('Seret titik putih untuk membentuk lahan. Klik + untuk menambah titik, klik kanan untuk menghapus.');
+  sel=id;S.show.park=1;commit();toast('Seret titik putih untuk membentuk lahan. Klik + untuk menambah titik, klik kanan untuk menghapus.');
 }
 
 /* ---------- sidebar ---------- */
@@ -216,6 +228,7 @@ function ui(){
   <div class="row"><input id="q" placeholder="Cari lokasi, misal: Alun-alun Rengat"><button data-a="cari">Cari</button></div>
   <div class="g3"><select data-g="prof"><option value="foot">Jalan kaki / pawai</option><option value="car">Mobil</option><option value="bike">Sepeda</option></select>
   <input data-g="speed" type="number" min="0.5" step="0.5" value="${S.speed}" title="Kecepatan km/jam"><input data-g="color" type="color" value="${S.color}" title="Warna rute"></div>
+  <div id="tg">${[['rute','Rute'],['pos','Pos'],['park','Parkir']].map(t=>`<button data-a="tog" data-v="${t[0]}" class="${S.show[t[0]]?'on':''}" title="Tampilkan atau sembunyikan ${t[1]}">${S.show[t[0]]?'●':'○'} ${t[1]}</button>`).join('')}</div>
   <div class="st" id="stats"></div>`;
   $('#hd [data-g=prof]').value=S.prof;
   $('#tabs').innerHTML=[['rute','Rute'],['pos','Pos ('+S.pos.length+')'],['parkir','Parkir ('+S.park.length+')']].map(t=>`<button data-a="tab" data-v="${t[0]}" class="${tab===t[0]?'on':''}">${t[1]}</button>`).join('');
@@ -244,7 +257,7 @@ const A=document.querySelector('aside');
 A.addEventListener('input',e=>{
   const d=e.target.dataset;
   if(d.g){S[d.g]=d.g==='speed'?(parseFloat(e.target.value)||3):e.target.value;save();if(d.g==='prof')route();if(d.g==='color')drawRoute();stats()}
-  else if(d.t){const o=S[d.t].find(x=>x.id==d.id);if(o){o[d.f]=e.target.value;save()}}
+  else if(d.t){const o=S[d.t].find(x=>x.id==d.id);if(o){o[d.f]=e.target.value;save();draw();info()}}
 });
 A.addEventListener('change',e=>{if(e.target.dataset.t)draw()});
 A.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='q')cari()});
@@ -258,6 +271,7 @@ A.addEventListener('click',e=>{
   else if(a==='del'){S[d.t]=S[d.t].filter(x=>x.id!=d.id);if(sel==d.id)sel=null;commit()}
   else if(a==='goto'){const p=S.pos.find(x=>x.id==d.id);map.setView([p.lat,p.lng],17)}
   else if(a==='clr'){if(confirm('Hapus semua titik rute?')){S.pts=[];commit()}}
+  else if(a==='tog'){S.show[d.v]=S.show[d.v]?0:1;save();draw();ui()}
   else if(a==='cari')cari();
   else if(a==='exp'){const u=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'})),l=document.createElement('a');l.href=u;l.download=(S.event||'rute').replace(/\W+/g,'-')+'.json';l.click();URL.revokeObjectURL(u)}
   else if(a==='imp')$('#fi').click();
