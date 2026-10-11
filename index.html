@@ -20,7 +20,7 @@ main{display:grid;grid-template-rows:3fr 1fr;min-height:0;min-width:0}
 #info .ln{height:6px;width:100%;margin-top:13px;border-radius:3px}
 #info .lk b{font-size:12px;margin-top:2px}
 #info .ri{width:100%;margin-top:4px;font-size:12px;padding:3px 6px}
-#tg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+#tg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 #tg button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 aside{display:flex;flex-direction:column;background:#fff;border-right:1px solid var(--line);min-height:0}
 #map{height:100%;min-height:0}
@@ -36,8 +36,8 @@ button.dg{color:#b42318}
 .ev{font-size:17px;font-weight:700;border:0;border-bottom:2px solid var(--line);border-radius:0;padding:4px 0}
 .row{display:flex;gap:6px}
 .g3{display:grid;grid-template-columns:1.4fr 1fr 44px;gap:6px}
-.tabs{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line)}
-.tabs button{border:0;border-radius:0;padding:10px;border-bottom:3px solid transparent}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)}
+.tabs button{border:0;border-radius:0;padding:10px 2px;font-size:13px;border-bottom:3px solid transparent}
 .tabs button.on{border-color:var(--ink);font-weight:700}
 .st{background:var(--bg);border-radius:8px;padding:8px 10px}
 .st b{font-size:16px}
@@ -52,6 +52,9 @@ button.dg{color:#b42318}
 .mk.mx{width:12px;height:12px;border-radius:50%;background:#fffd;border:1px solid var(--pk);color:var(--pk);font-size:11px;box-shadow:none}
 .leaflet-tooltip.tt{background:none;border:0;box-shadow:none;font-weight:600;color:#0b4f8a;text-shadow:0 0 3px #fff,0 0 3px #fff}
 .leaflet-tooltip.tt:before{display:none}
+.leaflet-tooltip.tt2{background:none;border:0;box-shadow:none;padding:0}
+.leaflet-tooltip.tt2:before{display:none}
+.tt2 span{display:block;color:#fff;padding:2px 9px;border-radius:999px;font-weight:600;font-size:12px;white-space:nowrap;border:2px solid #fff;box-shadow:0 1px 4px #0006}
 #toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:999px;z-index:9999;display:none;max-width:90vw}
 @media(max-width:800px){#app{grid-template-columns:1fr;grid-template-rows:62% 1fr}main{order:-1;grid-template-rows:1fr 140px}aside{border-right:0;border-top:1px solid var(--line)}}
 </style>
@@ -73,8 +76,8 @@ const esc=t=>String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 function load(){try{return JSON.parse(localStorage.getItem('rp1'))}catch(e){return null}}
 function save(){try{localStorage.setItem('rp1',JSON.stringify(S))}catch(e){}}
 let S=load()||{event:'Event baru',prof:'foot',speed:3,color:'#e8590c',pts:[],pos:[],park:[],nid:1,view:[-0.3749,102.5456,15]};
-S.show=S.show||{rute:1,pos:1,park:1};
-let tab='rute',arm=null,sel=null,R={dist:0,names:[],legs:[],err:''},rid=0,tt;
+S.show=S.show||{rute:1,pos:1,park:1,alt:1};if(S.show.alt==null)S.show.alt=1;S.alt=S.alt||[];
+let tab='rute',arm=null,sel=null,dAlt=null,R={dist:0,names:[],legs:[],err:''},rid=0,tt;
 
 const map=L.map('map').setView([S.view[0],S.view[1]],S.view[2]);
 const osmA='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
@@ -84,7 +87,7 @@ const base={
 };
 base['OpenStreetMap'].addTo(map);
 L.control.layers(base,null,{position:'topright'}).addTo(map);
-const gK=L.layerGroup().addTo(map),gR=L.layerGroup().addTo(map),gM=L.layerGroup().addTo(map),gP=L.layerGroup().addTo(map),gE=L.layerGroup().addTo(map);
+const gK=L.layerGroup().addTo(map),gR=L.layerGroup().addTo(map),gA=L.layerGroup().addTo(map),gM=L.layerGroup().addTo(map),gP=L.layerGroup().addTo(map),gE=L.layerGroup().addTo(map);
 map.on('moveend',()=>{const c=map.getCenter();S.view=[c.lat,c.lng,map.getZoom()];save()});
 
 function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(tt);tt=setTimeout(()=>t.style.display='none',2600)}
@@ -104,9 +107,9 @@ async function route(){
     if(id!==rid)return;
     if(j.code!=='Ok')throw 0;
     const rt=j.routes[0],names=[];
-    const inf=[];
-    const legs=rt.legs.map(l=>{const cs=[],ln=[];let u=0;l.steps.forEach(s=>{if(!s.name&&s.distance>=40)u=1;s.geometry.coordinates.forEach(x=>cs.push([x[1],x[0]]));if(s.name&&ln[ln.length-1]!==s.name)ln.push(s.name);if(s.name&&names[names.length-1]!==s.name)names.push(s.name)});inf.push({d:l.distance,n:ln,u});return cs});
-    R={dist:rt.distance,names,legs,info:inf,err:''};
+    const inf=[],ar=[];
+    const legs=rt.legs.map((l,li)=>{const cs=[],ln=[];let u=0;l.steps.forEach(s=>{if(!s.name&&s.distance>=40)u=1;const mv=s.maneuver;if(mv&&((li===0&&mv.type==='depart'&&s===l.steps[0])||(['turn','end of road','fork'].includes(mv.type)&&mv.modifier!=='straight')))ar.push({lat:mv.location[1],lng:mv.location[0],b:mv.bearing_after,st:mv.type==='depart'});s.geometry.coordinates.forEach(x=>cs.push([x[1],x[0]]));if(s.name&&ln[ln.length-1]!==s.name)ln.push(s.name);if(s.name&&names[names.length-1]!==s.name)names.push(s.name)});inf.push({d:l.distance,n:ln,u});return cs});
+    R={dist:rt.distance,names,legs,info:inf,arrows:ar,err:''};
   }catch(e){
     if(id!==rid)return;
     R={dist:straight(),names:[],legs:[],err:'Routing gagal, memakai garis lurus sementara'};
@@ -127,6 +130,7 @@ function drawRoute(){
   const cas=L.polyline(all,{color:'#fff',weight:13,opacity:.95,lineCap:'round',lineJoin:'round',interactive:tab==='rute'}).addTo(gR);
   L.polyline(all,{color:S.color,weight:8,opacity:.9,lineCap:'round',lineJoin:'round',dashArray:R.err?'2 10':null,interactive:false}).addTo(gR);
   cas.on('click',e=>{L.DomEvent.stopPropagation(e);addVia(e.latlng)});
+  (R.arrows||[]).forEach(a=>L.marker(fwd(a,a.b,a.st?22:10),{icon:arr(a.b,a.st?28:22,'#fff',S.color),interactive:false,keyboard:false}).addTo(gR));
 }
 function fmt(m){const d=R.dist/1000/(S.speed||3)*60;return (R.dist/1000).toFixed(2)+' km • '+(d>=60?Math.floor(d/60)+' jam '+Math.round(d%60)+' menit':Math.round(d)+' menit')}
 function stats(){
@@ -176,7 +180,7 @@ $('#info').addEventListener('input',e=>{
 
 /* ---------- gambar marker, pos, parkir ---------- */
 function draw(){
-  gM.clearLayers();gP.clearLayers();gK.clearLayers();gE.clearLayers();drawRoute();
+  gM.clearLayers();gP.clearLayers();gK.clearLayers();gE.clearLayers();gA.clearLayers();drawRoute();drawAlt();
   let k=0;
   S.show.rute&&S.pts.forEach((p,i)=>{
     if(p.via&&tab!=='rute')return;
@@ -187,8 +191,8 @@ function draw(){
     m.on('dragend',()=>{const q=m.getLatLng();p.lat=q.lat;p.lng=q.lng;commit()});
     m.on('contextmenu',()=>{S.pts=S.pts.filter(x=>x!==p);commit()});
   });
-  S.show.pos&&S.pos.forEach(p=>{
-    const m=L.marker([p.lat,p.lng],{draggable:true,icon:ico('p','P'+p.id,30)}).addTo(gP);
+  S.show.pos&&S.pos.forEach((p,i)=>{
+    const m=L.marker([p.lat,p.lng],{draggable:true,icon:ico('p','P'+(i+1),30)}).addTo(gP);
     m.bindPopup(`<b>${esc(p.name)}</b><br>${esc(p.tugas)}<br>${esc(p.personil)} • ${esc(p.jam)}`);
     m.on('dragend',()=>{const q=m.getLatLng();p.lat=q.lat;p.lng=q.lng;save()});
   });
@@ -207,12 +211,75 @@ function draw(){
   });
 }
 
+/* ---------- panah & rute pengalihan ---------- */
+const brg=(a,b)=>{const r=Math.PI/180,dl=(b[1]-a[1])*r,y=Math.sin(dl)*Math.cos(b[0]*r),x=Math.cos(a[0]*r)*Math.sin(b[0]*r)-Math.sin(a[0]*r)*Math.cos(b[0]*r)*Math.cos(dl);return(Math.atan2(y,x)/r+360)%360};
+const fwd=(p,b,m)=>{const r=b*Math.PI/180;return[p.lat+m*Math.cos(r)/111000,p.lng+m*Math.sin(r)/(111000*Math.cos(p.lat*Math.PI/180))]};
+const arr=(b,z,f,st)=>L.divIcon({className:'',html:`<svg width="${z}" height="${z}" viewBox="0 0 24 24" style="transform:rotate(${b}deg);display:block"><path d="M12 1.5 22 22 12 17 2 22Z" fill="${f}" stroke="${st}" stroke-width="2" stroke-linejoin="round"/></svg>`,iconSize:[z,z],iconAnchor:[z/2,z/2]});
+const cur=()=>{map.getContainer().style.cursor=(dAlt!=null||arm)?'crosshair':''};
+const ALTC=['#7c3aed','#0891b2','#c026d3','#4d7c0f'],AR={},AT={};
+const ca=a=>{save();draw();routeAlt(a);ui()};
+const altLegs=a=>(AR[a.id]&&AR[a.id].legs.length===a.pts.length-1)?AR[a.id].legs:a.pts.slice(0,-1).map((p,i)=>[[p.lat,p.lng],[a.pts[i+1].lat,a.pts[i+1].lng]]);
+async function routeAlt(a){
+  const tk=AT[a.id]=(AT[a.id]||0)+1;
+  if(a.pts.length<2){delete AR[a.id];draw();return}
+  const c=a.pts.map(p=>p.lng+','+p.lat).join(';');
+  try{
+    const j=await(await fetch(`https://routing.openstreetmap.de/routed-car/route/v1/driving/${c}?overview=false&geometries=geojson&steps=true`)).json();
+    if(tk!==AT[a.id])return;
+    if(j.code!=='Ok')throw 0;
+    const names=[];
+    const legs=j.routes[0].legs.map(l=>{const cs=[];l.steps.forEach(s=>{s.geometry.coordinates.forEach(x=>cs.push([x[1],x[0]]));if(s.name&&names[names.length-1]!==s.name)names.push(s.name)});return cs});
+    AR[a.id]={legs,dist:j.routes[0].distance};
+    const f=names[0]||'',t2=names[names.length-1]||'';let ch=0;
+    if(a.from===undefined||a.from===a.af){if(a.from!==f)ch=1;a.from=a.af=f}
+    if(a.to===undefined||a.to===a.at){if(a.to!==t2)ch=1;a.to=a.at=t2}
+    if(ch){save();ui()}
+  }catch(e){if(tk!==AT[a.id])return;delete AR[a.id]}
+  draw();
+}
+function addAltVia(a,ll){
+  let b=0,m=1e12;
+  altLegs(a).forEach((l,i)=>l.forEach(q=>{const d=map.distance(ll,q);if(d<m){m=d;b=i}}));
+  a.pts.splice(b+1,0,{lat:ll.lat,lng:ll.lng});ca(a);
+}
+function drawAlt(){
+  if(!S.show.alt)return;
+  S.alt.forEach(a=>{
+    const n=a.pts.length,c=a.color||'#7c3aed',ed=tab==='alih';
+    if(!n)return;
+    const lg=n>1?altLegs(a):[],all=[].concat(...lg);
+    if(n>1){
+      const cas=L.polyline(all,{color:'#fff',weight:11,opacity:.95,lineCap:'round',lineJoin:'round',interactive:ed}).addTo(gA);
+      L.polyline(all,{color:c,weight:6,opacity:.95,dashArray:'12 8',interactive:false}).addTo(gA);
+      cas.on('click',e=>{L.DomEvent.stopPropagation(e);addAltVia(a,e.latlng)});
+      L.marker(all[Math.floor(all.length/2)],{opacity:0,interactive:false,keyboard:false}).addTo(gA)
+        .bindTooltip(`<span style="background:${c}">${esc(a.from||'...')} &#10132; ${esc(a.to||'...')}</span>`,{permanent:true,direction:'top',className:'tt2'});
+    }
+    a.pts.forEach((p,i)=>{
+      const last=n>1&&i===n-1,g=last?lg[n-2]:lg[i];
+      let b=0;
+      if(g&&g.length>1){const l=g.length;b=last?brg(g[Math.max(0,l-5)],g[l-1]):brg(g[0],g[Math.min(l-1,4)])}
+      let m;
+      if(last)m=L.marker([p.lat,p.lng],{icon:arr(b,40,c,'#fff'),draggable:ed,interactive:ed,keyboard:false}).addTo(gA);
+      else{
+        if(n>1)L.marker(fwd(p,b,i===0?16:12),{icon:arr(b,24,'#fff',c),interactive:false,keyboard:false}).addTo(gA);
+        if(ed)m=L.marker([p.lat,p.lng],{draggable:true,icon:i===0?ico('s','A',24,'background:'+c):ico('v','',12,'border-color:'+c)}).addTo(gA);
+      }
+      if(m){
+        m.on('dragend',()=>{const q=m.getLatLng();p.lat=q.lat;p.lng=q.lng;ca(a)});
+        m.on('contextmenu',()=>{a.pts.splice(i,1);ca(a)});
+      }
+    });
+  });
+}
+
 /* ---------- peta: klik ---------- */
 map.on('click',e=>{
   if(arm==='pos'){
     S.pos.push({id:S.nid++,name:'Pos baru',lat:e.latlng.lat,lng:e.latlng.lng,personil:'2 orang',tugas:'Pengamanan',jam:'07.00-11.00'});
     S.show.pos=1;arm=null;map.getContainer().style.cursor='';commit();return;
   }
+  if(tab==='alih'){const a=dAlt!=null&&S.alt.find(x=>x.id===dAlt);if(a){a.pts.push({lat:e.latlng.lat,lng:e.latlng.lng});S.show.alt=1;ca(a)}return}
   if(tab==='rute'){S.show.rute=1;S.pts.push({id:S.nid++,lat:e.latlng.lat,lng:e.latlng.lng,name:''});commit();return}
   if(tab==='parkir'&&sel){sel=null;draw();ui()}
 });
@@ -228,10 +295,10 @@ function ui(){
   <div class="row"><input id="q" placeholder="Cari lokasi, misal: Alun-alun Rengat"><button data-a="cari">Cari</button></div>
   <div class="g3"><select data-g="prof"><option value="foot">Jalan kaki / pawai</option><option value="car">Mobil</option><option value="bike">Sepeda</option></select>
   <input data-g="speed" type="number" min="0.5" step="0.5" value="${S.speed}" title="Kecepatan km/jam"><input data-g="color" type="color" value="${S.color}" title="Warna rute"></div>
-  <div id="tg">${[['rute','Rute'],['pos','Pos'],['park','Parkir']].map(t=>`<button data-a="tog" data-v="${t[0]}" class="${S.show[t[0]]?'on':''}" title="Tampilkan atau sembunyikan ${t[1]}">${S.show[t[0]]?'●':'○'} ${t[1]}</button>`).join('')}</div>
+  <div id="tg">${[['rute','Rute'],['pos','Pos'],['park','Parkir'],['alt','Alih']].map(t=>`<button data-a="tog" data-v="${t[0]}" class="${S.show[t[0]]?'on':''}" title="Tampilkan atau sembunyikan ${t[1]}">${S.show[t[0]]?'●':'○'} ${t[1]}</button>`).join('')}</div>
   <div class="st" id="stats"></div>`;
   $('#hd [data-g=prof]').value=S.prof;
-  $('#tabs').innerHTML=[['rute','Rute'],['pos','Pos ('+S.pos.length+')'],['parkir','Parkir ('+S.park.length+')']].map(t=>`<button data-a="tab" data-v="${t[0]}" class="${tab===t[0]?'on':''}">${t[1]}</button>`).join('');
+  $('#tabs').innerHTML=[['rute','Rute'],['pos','Pos ('+S.pos.length+')'],['parkir','Parkir ('+S.park.length+')'],['alih','Alih ('+S.alt.length+')']].map(t=>`<button data-a="tab" data-v="${t[0]}" class="${tab===t[0]?'on':''}">${t[1]}</button>`).join('');
   let h='';
   if(tab==='rute'){
     h=`<div class="mut">Klik peta untuk menambah titik. Klik garis rute untuk merapikan agar menempel ke jalan; ini hanya titik bantu, bukan titik baru. Seret titik untuk memindah, klik kanan untuk menghapus.</div>`;
@@ -240,10 +307,17 @@ function ui(){
     h+=`<button class="dg" data-a="clr">Hapus semua rute</button>`;
   }else if(tab==='pos'){
     h=`<button class="pr" data-a="addpos">${arm==='pos'?'Klik peta untuk menaruh pos...':'+ Tambah pos'}</button>`;
-    S.pos.forEach(p=>h+=`<div class="card"><div class="row"><b style="align-self:center">P${p.id}</b><input data-t="pos" data-id="${p.id}" data-f="name" value="${esc(p.name)}"></div>
+    S.pos.forEach((p,i)=>h+=`<div class="card"><div class="row"><b style="align-self:center">P${i+1}</b><input data-t="pos" data-id="${p.id}" data-f="name" value="${esc(p.name)}"></div>
     <input data-t="pos" data-id="${p.id}" data-f="tugas" value="${esc(p.tugas)}" placeholder="Tugas">
     <div class="row"><input data-t="pos" data-id="${p.id}" data-f="personil" value="${esc(p.personil)}" placeholder="Personil"><input data-t="pos" data-id="${p.id}" data-f="jam" value="${esc(p.jam)}" placeholder="Jam"></div>
     <div class="row"><button data-a="goto" data-t="pos" data-id="${p.id}">Lihat di peta</button><button class="dg" data-a="del" data-t="pos" data-id="${p.id}">Hapus</button></div></div>`);
+  }else if(tab==='alih'){
+    h=`<div class="mut">Klik peta untuk menandai titik awal, titik belokan, lalu titik akhir (ujung panah besar). Seret titik untuk memindah, klik kanan untuk menghapus, klik garis untuk menambah belokan. Jalur mengikuti jalan untuk mobil.</div><button class="pr" data-a="addalt">+ Tambah pengalihan</button>`;
+    S.alt.forEach((a,i)=>h+=`<div class="card ${dAlt===a.id?'on':''}"><div class="row"><b style="align-self:center;white-space:nowrap">Pengalihan ${i+1}</b><input type="color" style="width:44px;height:32px;padding:0" data-t="alt" data-id="${a.id}" data-f="color" value="${a.color}"></div>
+    <input data-t="alt" data-id="${a.id}" data-f="from" value="${esc(a.from)}" placeholder="Dari jalan...">
+    <input data-t="alt" data-id="${a.id}" data-f="to" value="${esc(a.to)}" placeholder="Ke jalan...">
+    <div class="mut">${a.pts.length} titik${AR[a.id]?' &bull; '+(AR[a.id].dist/1000).toFixed(2)+' km':''}</div>
+    <div class="row"><button data-a="drawalt" data-id="${a.id}">${dAlt===a.id?'Selesai menggambar':'Gambar / lanjutkan'}</button><button class="dg" data-a="del" data-t="alt" data-id="${a.id}">Hapus</button></div></div>`);
   }else{
     h=`<button class="pr" data-a="addpark">+ Tambah parkir</button>`;
     S.park.forEach(a=>h+=`<div class="card ${sel===a.id?'on':''}"><input data-t="park" data-id="${a.id}" data-f="name" value="${esc(a.name)}">
@@ -264,13 +338,15 @@ A.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='q')cari()});
 A.addEventListener('click',e=>{
   const b=e.target.closest('[data-a]');if(!b)return;
   const d=b.dataset,a=d.a;
-  if(a==='tab'){tab=d.v;arm=null;sel=null;map.getContainer().style.cursor='';draw();ui()}
+  if(a==='tab'){tab=d.v;arm=null;sel=null;dAlt=null;cur();draw();ui()}
   else if(a==='addpos'){arm=arm?null:'pos';map.getContainer().style.cursor=arm?'crosshair':'';ui()}
   else if(a==='addpark')addPark();
   else if(a==='edit'){sel=sel==+d.id?null:+d.id;draw();ui()}
-  else if(a==='del'){S[d.t]=S[d.t].filter(x=>x.id!=d.id);if(sel==d.id)sel=null;commit()}
+  else if(a==='del'){S[d.t]=S[d.t].filter(x=>x.id!=d.id);if(sel==d.id)sel=null;if(dAlt==d.id){dAlt=null;cur()}delete AR[d.id];commit()}
   else if(a==='goto'){const p=S.pos.find(x=>x.id==d.id);map.setView([p.lat,p.lng],17)}
   else if(a==='clr'){if(confirm('Hapus semua titik rute?')){S.pts=[];commit()}}
+  else if(a==='addalt'){const n2={id:S.nid++,color:ALTC[S.alt.length%ALTC.length],pts:[]};S.alt.push(n2);S.show.alt=1;dAlt=n2.id;cur();save();draw();ui();toast('Klik peta: titik awal, titik belokan, lalu titik akhir. Tekan Selesai bila sudah.')}
+  else if(a==='drawalt'){dAlt=dAlt==+d.id?null:+d.id;cur();ui()}
   else if(a==='tog'){S.show[d.v]=S.show[d.v]?0:1;save();draw();ui()}
   else if(a==='cari')cari();
   else if(a==='exp'){const u=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'})),l=document.createElement('a');l.href=u;l.download=(S.event||'rute').replace(/\W+/g,'-')+'.json';l.click();URL.revokeObjectURL(u)}
@@ -279,7 +355,7 @@ A.addEventListener('click',e=>{
 A.addEventListener('change',e=>{
   if(e.target.id!=='fi')return;
   const f=e.target.files[0];if(!f)return;
-  f.text().then(t=>{try{const j=JSON.parse(t);if(!Array.isArray(j.pts)||!Array.isArray(j.pos)||!Array.isArray(j.park))throw 0;S=Object.assign(S,j);sel=null;commit();map.setView([S.view[0],S.view[1]],S.view[2]);toast('Data dibuka')}catch(x){toast('File JSON tidak dikenali')}});
+  f.text().then(t=>{try{const j=JSON.parse(t);if(!Array.isArray(j.pts)||!Array.isArray(j.pos)||!Array.isArray(j.park))throw 0;S=Object.assign(S,j);S.alt=j.alt||[];S.show=Object.assign({rute:1,pos:1,park:1,alt:1},j.show);sel=null;dAlt=null;commit();S.alt.forEach(routeAlt);map.setView([S.view[0],S.view[1]],S.view[2]);toast('Data dibuka')}catch(x){toast('File JSON tidak dikenali')}});
 });
 async function cari(){
   const q=$('#q').value.trim();if(!q)return;
@@ -287,7 +363,7 @@ async function cari(){
     if(j[0])map.setView([+j[0].lat,+j[0].lon],16);else toast('Lokasi tidak ditemukan')}catch(e){toast('Pencarian gagal, periksa koneksi')}
 }
 
-ui();draw();route();
+ui();draw();route();S.alt.forEach(routeAlt);
 if(S.pts.length>1){const b=L.latLngBounds(S.pts.map(p=>[p.lat,p.lng]));map.fitBounds(b,{padding:[50,50],maxZoom:17})}
 </script>
 </body>
