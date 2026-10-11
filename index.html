@@ -55,6 +55,11 @@ button.dg{color:#b42318}
 .leaflet-tooltip.tt2{background:none;border:0;box-shadow:none;padding:0}
 .leaflet-tooltip.tt2:before{display:none}
 .tt2 span{display:block;color:#fff;padding:2px 9px;border-radius:999px;font-weight:600;font-size:12px;white-space:nowrap;border:2px solid #fff;box-shadow:0 1px 4px #0006}
+#mdl{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:9998}
+#mdl.on{display:flex}
+#mdl .bx{background:#fff;border-radius:12px;padding:16px;width:min(380px,92vw);display:grid;gap:10px}
+#mdl label{display:flex;gap:8px;align-items:center}
+#mdl input[type=checkbox]{width:auto}
 #toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:999px;z-index:9999;display:none;max-width:90vw}
 @media(max-width:800px){#app{grid-template-columns:1fr;grid-template-rows:62% 1fr}main{order:-1;grid-template-rows:1fr 140px}aside{border-right:0;border-top:1px solid var(--line)}}
 </style>
@@ -68,6 +73,17 @@ button.dg{color:#b42318}
 </aside>
 <main><div id="map"></div><div id="info"></div></main>
 </div>
+<div id="mdl"><div class="bx">
+  <b style="font-size:16px">Cetak gambar</b>
+  <div class="mut">Gambar memakai tampilan peta saat ini (posisi dan zoom). Zoom lebih dekat sebelum mengunduh untuk hasil lebih tajam.</div>
+  <label><input type="checkbox" id="pk_rute"> Rute</label>
+  <label><input type="checkbox" id="pk_pos"> Pos jaga</label>
+  <label><input type="checkbox" id="pk_park"> Parkir</label>
+  <label><input type="checkbox" id="pk_alt"> Rute pengalihan</label>
+  <select id="pf"><option value="png">PNG (tajam, ukuran lebih besar)</option><option value="jpg">JPG (lebih ringan)</option></select>
+  <div class="row"><button class="pr" data-pa="all" style="flex:1">Unduh gabungan</button><button data-pa="each" style="flex:1">Unduh per layer</button></div>
+  <button data-pa="x">Tutup</button>
+</div></div>
 <div id="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script>
@@ -82,8 +98,8 @@ let tab='rute',arm=null,sel=null,dAlt=null,R={dist:0,names:[],legs:[],err:''},ri
 const map=L.map('map').setView([S.view[0],S.view[1]],S.view[2]);
 const osmA='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 const base={
-  'OpenStreetMap':L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:osmA}),
-  'Satelit':L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri'})
+  'OpenStreetMap':L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,crossOrigin:true,attribution:osmA}),
+  'Satelit':L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,crossOrigin:true,attribution:'Tiles &copy; Esri'})
 };
 base['OpenStreetMap'].addTo(map);
 L.control.layers(base,null,{position:'topright'}).addTo(map);
@@ -289,6 +305,87 @@ function addPark(){
   sel=id;S.show.park=1;commit();toast('Seret titik putih untuk membentuk lahan. Klik + untuk menambah titik, klik kanan untuk menghapus.');
 }
 
+/* ---------- cetak gambar ---------- */
+const LBL={rute:'Rute',pos:'Pos jaga',park:'Parkir',alt:'Pengalihan'};
+function snap(keys){
+  const el=map.getContainer(),W=el.clientWidth,H=el.clientHeight,K=2,HD=60;
+  const cv=document.createElement('canvas');cv.width=W*K;cv.height=(H+HD)*K;
+  const c=cv.getContext('2d');c.scale(K,K);c.fillStyle='#fff';c.fillRect(0,0,W,H+HD);
+  c.save();c.translate(0,HD);c.beginPath();c.rect(0,0,W,H);c.clip();
+  const r0=el.getBoundingClientRect();
+  el.querySelectorAll('img.leaflet-tile-loaded').forEach(im=>{const r=im.getBoundingClientRect();c.drawImage(im,r.left-r0.left,r.top-r0.top,r.width,r.height)});
+  const P=ll=>{const q=map.latLngToContainerPoint(ll);return[q.x,q.y]};
+  const F='600 12px system-ui,sans-serif';
+  const rr=(x,y,w,h,r)=>{c.beginPath();c.roundRect?c.roundRect(x,y,w,h,r):c.rect(x,y,w,h)};
+  const line=(pts,col,w,dash)=>{c.beginPath();pts.forEach((q,i)=>i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]));c.strokeStyle=col;c.lineWidth=w;c.lineJoin=c.lineCap='round';c.setLineDash(dash||[]);c.stroke();c.setLineDash([])};
+  const arrow=(q,b,z,f,st)=>{c.save();c.translate(q[0],q[1]);c.rotate(b*Math.PI/180);c.scale(z/24,z/24);c.translate(-12,-12);const p=new Path2D('M12 1.5 22 22 12 17 2 22Z');c.fillStyle=f;c.strokeStyle=st;c.lineWidth=2;c.lineJoin='round';c.fill(p);c.stroke(p);c.restore()};
+  const dot=(q,r,f,st,w)=>{c.beginPath();c.arc(q[0],q[1],r,0,7);c.fillStyle=f;c.fill();c.strokeStyle=st;c.lineWidth=w;c.stroke()};
+  const tx=(t,x,y,f,col,al,halo)=>{c.font=f;c.textAlign=al||'center';c.textBaseline='middle';if(halo){c.lineWidth=4;c.strokeStyle='#fff';c.lineJoin='round';c.strokeText(t,x,y)}c.fillStyle=col;c.fillText(t,x,y)};
+  const pill=(t,x,y,col)=>{c.font=F;const w=c.measureText(t).width+18;rr(x-w/2,y-11,w,22,11);c.fillStyle=col;c.fill();c.strokeStyle='#fff';c.lineWidth=2;c.stroke();tx(t,x,y,F,'#fff')};
+  const cut=(t,n)=>t.length>n?t.slice(0,n-1)+'…':t;
+  const lg=[],has=k=>keys.includes(k);
+  if(has('park')){lg.push(['Parkir',1]);S.park.forEach(a=>{
+    const q=a.pts.map(P);c.beginPath();q.forEach((x,i)=>i?c.lineTo(x[0],x[1]):c.moveTo(x[0],x[1]));c.closePath();
+    c.fillStyle='rgba(28,126,214,.22)';c.fill();c.strokeStyle='#1c7ed6';c.lineWidth=2;c.stroke();
+    tx(a.name,q.reduce((s2,x)=>s2+x[0],0)/q.length,q.reduce((s2,x)=>s2+x[1],0)/q.length,'700 12px system-ui,sans-serif','#0b4f8a','center',1);
+    lg.push([cut(a.name+(a.kapasitas?' - '+a.kapasitas:''),48)])})}
+  if(has('rute')&&S.pts.length>1){
+    line([].concat(...legsArr()).map(P),'#fff',13);line([].concat(...legsArr()).map(P),S.color,8);
+    (R.arrows||[]).forEach(a=>arrow(P(fwd(a,a.b,a.st?22:10)),a.b,a.st?28:22,'#fff',S.color));
+  }
+  if(has('alt'))S.alt.forEach((a,ai)=>{
+    const n=a.pts.length,col=a.color||'#7c3aed';if(n<2)return;
+    const g2=altLegs(a),all=[].concat(...g2).map(P);
+    line(all,'#fff',11);line(all,col,6,[12,8]);
+    a.pts.forEach((p,i)=>{const last=i===n-1,g=last?g2[n-2]:g2[i];let b=0;
+      if(g&&g.length>1){const l=g.length;b=last?brg(g[Math.max(0,l-5)],g[l-1]):brg(g[0],g[Math.min(l-1,4)])}
+      if(last)arrow(P([p.lat,p.lng]),b,40,col,'#fff');else arrow(P(fwd(p,b,i?12:16)),b,24,'#fff',col)});
+    const m=all[Math.floor(all.length/2)];pill((a.from||'...')+' \u2192 '+(a.to||'...'),m[0],m[1]-20,col);
+  });
+  if(has('alt')&&S.alt.length){lg.push(['Pengalihan',1]);S.alt.forEach((a,i)=>lg.push([cut((i+1)+'. '+(a.from||'...')+' \u2192 '+(a.to||'...'),48)]))}
+  if(has('rute')&&S.pts.length>1){
+    lg.push(['Rute: '+fmt(),1]);let k=0;
+    S.pts.forEach((p,i)=>{if(p.via)return;k++;
+      const q=P([p.lat,p.lng]);dot(q,13,i===0?'#14263b':i===S.pts.length-1?'#2f9e44':S.color,'#fff',2.5);tx(String(k),q[0],q[1],'700 12px system-ui,sans-serif','#fff');
+      lg.push([cut(k+'. '+(p.name||'Titik '+k),48)])});
+  }
+  if(has('pos')){lg.push(['Pos jaga',1]);S.pos.forEach((p,i)=>{
+    const q=P([p.lat,p.lng]);rr(q[0]-15,q[1]-15,30,30,8);c.fillStyle='#14263b';c.fill();c.strokeStyle='#fff';c.lineWidth=2;c.stroke();
+    tx('P'+(i+1),q[0],q[1],'700 12px system-ui,sans-serif','#fff');
+    lg.push([cut('P'+(i+1)+' '+p.name+(p.personil?' ('+p.personil+')':''),48)])})}
+  const rows=lg.filter(l=>l[0]!=='Parkir'&&l[0]!=='Pengalihan'&&l[0]!=='Pos jaga'&&!/^Rute:/.test(l[0])||true).slice(0,16);
+  if(rows.length){
+    c.font='12px system-ui,sans-serif';const w=Math.max(...rows.map(l=>c.measureText(l[0]).width))+20,h=rows.length*17+12,y0=H-h-26;
+    rr(10,y0,w,h,8);c.fillStyle='rgba(255,255,255,.92)';c.fill();c.strokeStyle='#dbe2ea';c.lineWidth=1;c.stroke();
+    rows.forEach((l,i)=>tx(l[0],20,y0+14+i*17,(l[1]?'700 ':'')+'12px system-ui,sans-serif','#14263b','left'));
+  }
+  const bk=Object.keys(base).find(k=>map.hasLayer(base[k]));
+  tx(bk==='Satelit'?'Tiles \u00a9 Esri':'\u00a9 OpenStreetMap contributors',W-8,H-9,'11px system-ui,sans-serif','#334155','right',1);
+  c.restore();
+  c.fillStyle='#14263b';c.fillRect(0,0,W,HD);
+  tx(S.event||'Event',16,22,'700 20px system-ui,sans-serif','#fff','left');
+  tx(keys.map(k=>LBL[k]).join(' + ')+'  |  '+new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}),16,45,'13px system-ui,sans-serif','#cbd5e1','left');
+  return cv;
+}
+async function save1(keys,fm,name){
+  const cv=snap(keys);
+  await new Promise(r=>cv.toBlob(bl=>{const u=URL.createObjectURL(bl),l=document.createElement('a');l.href=u;l.download=(S.event||'rute').replace(/\W+/g,'-')+'-'+name+'.'+fm;l.click();setTimeout(()=>URL.revokeObjectURL(u),2000);r()},fm==='jpg'?'image/jpeg':'image/png',.92));
+}
+function openPrint(){['rute','pos','park','alt'].forEach(k=>$('#pk_'+k).checked=!!S.show[k]);$('#mdl').classList.add('on')}
+$('#mdl').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-pa]');
+  if(e.target.id==='mdl'||(b&&b.dataset.pa==='x')){$('#mdl').classList.remove('on');return}
+  if(!b)return;
+  const ks=['rute','pos','park','alt'].filter(k=>$('#pk_'+k).checked);
+  if(!ks.length){toast('Pilih minimal satu layer');return}
+  const fm=$('#pf').value;
+  try{
+    if(b.dataset.pa==='all')await save1(ks,fm,ks.join('-'));
+    else for(const k of ks)await save1([k],fm,k);
+    toast('Gambar diunduh');
+  }catch(x){toast('Gagal membuat gambar. Coba ganti layer peta ke OpenStreetMap.')}
+});
+
 /* ---------- sidebar ---------- */
 function ui(){
   $('#hd').innerHTML=`<input class="ev" data-g="event" value="${esc(S.event)}" placeholder="Nama event">
@@ -324,7 +421,7 @@ function ui(){
     <input data-t="park" data-id="${a.id}" data-f="kapasitas" value="${esc(a.kapasitas)}" placeholder="Kapasitas, misal 40 bus / 120 motor">
     <div class="row"><button data-a="edit" data-id="${a.id}">${sel===a.id?'Selesai edit':'Edit bentuk'}</button><button class="dg" data-a="del" data-t="park" data-id="${a.id}">Hapus</button></div></div>`);
   }
-  h+=`<div class="row" style="margin-top:6px"><button data-a="exp">Simpan JSON</button><button data-a="imp">Buka JSON</button></div><input id="fi" type="file" accept=".json" hidden>`;
+  h+=`<div class="row" style="margin-top:6px"><button data-a="prt" class="pr">Cetak gambar</button><button data-a="exp">Simpan JSON</button><button data-a="imp">Buka JSON</button></div><input id="fi" type="file" accept=".json" hidden>`;
   $('#sc').innerHTML=h;stats();
 }
 const A=document.querySelector('aside');
@@ -350,6 +447,7 @@ A.addEventListener('click',e=>{
   else if(a==='tog'){S.show[d.v]=S.show[d.v]?0:1;save();draw();ui()}
   else if(a==='cari')cari();
   else if(a==='exp'){const u=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'})),l=document.createElement('a');l.href=u;l.download=(S.event||'rute').replace(/\W+/g,'-')+'.json';l.click();URL.revokeObjectURL(u)}
+  else if(a==='prt')openPrint();
   else if(a==='imp')$('#fi').click();
 });
 A.addEventListener('change',e=>{
