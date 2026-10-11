@@ -9,7 +9,16 @@
 :root{--ink:#14263b;--mut:#64748b;--line:#dbe2ea;--bg:#f4f6f8;--pk:#1c7ed6}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink)}
-#app{display:grid;grid-template-columns:370px 1fr;height:100%}
+#app{display:grid;grid-template-columns:1fr 2fr;height:100%}
+main{display:grid;grid-template-rows:3fr 1fr;min-height:0;min-width:0}
+#info{display:flex;align-items:flex-start;overflow:auto;padding:12px 14px;border-top:1px solid var(--line);background:#fff}
+#info .tot{flex:0 0 150px;padding-right:12px;margin-right:6px;border-right:1px solid var(--line);font-size:13px}
+#info .sp{flex:0 0 96px;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer}
+#info .c{width:32px;height:32px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px #0003;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center}
+#info .nm{font-size:12px;margin-top:6px;line-height:1.25;word-break:break-word}
+#info .lk{flex:0 0 170px;display:flex;flex-direction:column;align-items:center;text-align:center;padding:0 4px}
+#info .ln{height:6px;width:100%;margin-top:13px;border-radius:3px}
+#info .lk b{font-size:12px;margin-top:2px}
 aside{display:flex;flex-direction:column;background:#fff;border-right:1px solid var(--line);min-height:0}
 #map{height:100%;min-height:0}
 .hd{padding:12px;border-bottom:1px solid var(--line);display:grid;gap:8px}
@@ -41,17 +50,17 @@ button.dg{color:#b42318}
 .leaflet-tooltip.tt{background:none;border:0;box-shadow:none;font-weight:600;color:#0b4f8a;text-shadow:0 0 3px #fff,0 0 3px #fff}
 .leaflet-tooltip.tt:before{display:none}
 #toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:999px;z-index:9999;display:none;max-width:90vw}
-@media(max-width:800px){#app{grid-template-columns:1fr;grid-template-rows:1fr 50%}aside{order:2;border-right:0;border-top:1px solid var(--line)}}
+@media(max-width:800px){#app{grid-template-columns:1fr;grid-template-rows:62% 1fr}main{order:-1;grid-template-rows:1fr 140px}aside{border-right:0;border-top:1px solid var(--line)}}
 </style>
 </head>
 <body>
 <div id="app">
-<div id="map"></div>
 <aside>
   <div class="hd" id="hd"></div>
   <div class="tabs" id="tabs"></div>
   <div class="sc" id="sc"></div>
 </aside>
+<main><div id="map"></div><div id="info"></div></main>
 </div>
 <div id="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -91,8 +100,9 @@ async function route(){
     if(id!==rid)return;
     if(j.code!=='Ok')throw 0;
     const rt=j.routes[0],names=[];
-    const legs=rt.legs.map(l=>{const cs=[];l.steps.forEach(s=>{s.geometry.coordinates.forEach(x=>cs.push([x[1],x[0]]));if(s.name&&names[names.length-1]!==s.name)names.push(s.name)});return cs});
-    R={dist:rt.distance,names,legs,err:''};
+    const inf=[];
+    const legs=rt.legs.map(l=>{const cs=[],ln=[];l.steps.forEach(s=>{s.geometry.coordinates.forEach(x=>cs.push([x[1],x[0]]));if(s.name&&ln[ln.length-1]!==s.name)ln.push(s.name);if(s.name&&names[names.length-1]!==s.name)names.push(s.name)});inf.push({d:l.distance,n:ln});return cs});
+    R={dist:rt.distance,names,legs,info:inf,err:''};
   }catch(e){
     if(id!==rid)return;
     R={dist:straight(),names:[],legs:[],err:'Routing gagal, memakai garis lurus sementara'};
@@ -116,13 +126,41 @@ function drawRoute(){
 }
 function fmt(m){const d=R.dist/1000/(S.speed||3)*60;return (R.dist/1000).toFixed(2)+' km • '+(d>=60?Math.floor(d/60)+' jam '+Math.round(d%60)+' menit':Math.round(d)+' menit')}
 function stats(){
+  info();
   const e=$('#stats');if(!e)return;
   const n=S.pts.filter(p=>!p.via).length;
   e.innerHTML=S.pts.length<2?'<span class="mut">Klik peta untuk membuat rute (minimal 2 titik).</span>':
     `<b>${fmt()}</b> <span class="mut">• ${n} titik, ${S.pts.length-n} titik bantu</span>`+
-    (R.err?`<div class="mut" style="color:#b42318">${R.err}</div>`:'')+
-    (R.names.length?`<div class="mut" style="margin-top:4px">Jalan dilalui: ${R.names.map(esc).join(' → ')}</div>`:'');
+    (R.err?`<div class="mut" style="color:#b42318">${R.err}</div>`:'');
 }
+
+/* ---------- strip informasi rute ---------- */
+function info(){
+  const e=$('#info');if(!e)return;
+  const st=[];S.pts.forEach((p,i)=>{if(!p.via)st.push(i)});
+  if(st.length<2){e.innerHTML='<div class="mut">Rute tergambar di sini setelah ada dua titik.</div>';return}
+  const sg=[];
+  for(let k=0;k<st.length-1;k++){
+    let d=0,n=[];
+    for(let i=st[k];i<st[k+1];i++){
+      const l=(R.info||[])[i];
+      if(l){d+=l.d;l.n.forEach(x=>{if(n[n.length-1]!==x)n.push(x)})}
+      else d+=map.distance([S.pts[i].lat,S.pts[i].lng],[S.pts[i+1].lat,S.pts[i+1].lng]);
+    }
+    sg.push({d,n});
+  }
+  let h=`<div class="tot"><b>${esc(S.event)}</b><br>${fmt()}</div>`;
+  st.forEach((pi,k)=>{
+    const p=S.pts[pi];
+    h+=`<div class="sp" data-i="${pi}"><div class="c" style="background:${k===0?'#14263b':k===st.length-1?'#2f9e44':S.color}">${k+1}</div><div class="nm">${esc(p.name||'Titik '+(k+1))}</div></div>`;
+    if(sg[k])h+=`<div class="lk"><div class="ln" style="background:${S.color}"></div><div class="nm">${sg[k].n.length?sg[k].n.map(esc).join(' → '):'<i>jalan tanpa nama</i>'}</div><b>${sg[k].d>=1000?(sg[k].d/1000).toFixed(2)+' km':Math.round(sg[k].d)+' m'}</b></div>`;
+  });
+  e.innerHTML=h;
+}
+$('#info').addEventListener('click',e=>{
+  const b=e.target.closest('.sp');if(!b)return;
+  const p=S.pts[+b.dataset.i];if(p)map.setView([p.lat,p.lng],Math.max(map.getZoom(),16));
+});
 
 /* ---------- gambar marker, pos, parkir ---------- */
 function draw(){
