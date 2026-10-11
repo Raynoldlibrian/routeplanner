@@ -60,6 +60,17 @@ button.dg{color:#b42318}
 #mdl .bx{background:#fff;border-radius:12px;padding:16px;width:min(380px,92vw);display:grid;gap:10px}
 #mdl label{display:flex;gap:8px;align-items:center}
 #mdl input[type=checkbox]{width:auto}
+#sim{position:fixed;inset:0;z-index:9990;background:#0b1220;display:none}
+#sim.on{display:block}
+#sm{position:absolute;inset:0}
+#sp{position:absolute;left:12px;top:12px;width:min(300px,80vw);max-height:46vh;overflow:auto;background:#fffffff2;border-radius:10px;padding:10px 12px;z-index:2;font-size:13px}
+#sx{position:absolute;right:12px;top:12px;z-index:2}
+#sb{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;width:min(920px,96vw);background:#fffffff2;border-radius:10px;padding:8px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;z-index:2}
+#sb input[type=range]{flex:1;min-width:140px;padding:0}
+#sb select,#sb input[type=time]{width:auto}
+.mk.p{transition:transform .2s,background .2s}
+.mk.p.on{background:#16a34a;transform:scale(1.35)}
+.cv{width:22px;height:22px;border-radius:50%;background:#e8590c;border:3px solid #fff;box-shadow:0 0 0 6px #e8590c55,0 2px 8px #0008}
 #toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:999px;z-index:9999;display:none;max-width:90vw}
 @media(max-width:800px){#app{grid-template-columns:1fr;grid-template-rows:62% 1fr}main{order:-1;grid-template-rows:1fr 140px}aside{border-right:0;border-top:1px solid var(--line)}}
 </style>
@@ -84,6 +95,16 @@ button.dg{color:#b42318}
   <div class="row"><button class="pr" data-pa="all" style="flex:1">Unduh gabungan</button><button data-pa="each" style="flex:1">Unduh per layer</button></div>
   <button data-pa="x">Tutup</button>
 </div></div>
+<div id="sim"><div id="sm"></div>
+  <div id="sp"><b id="st1"></b><div id="st2" style="margin:4px 0"></div><div id="st3"></div></div>
+  <button id="sx" class="pr">Tutup</button>
+  <div id="sb"><button id="spl" class="pr">&#9654; Putar</button><button id="srs">&#9198;</button>
+    <select id="ssp" title="Kecepatan simulasi"><option value="10">10x</option><option value="30" selected>30x</option><option value="60">60x</option><option value="120">120x</option></select>
+    <input type="range" id="ssl" min="0" max="100" value="0">
+    <select id="sca"><option value="ikut">Kamera ikut</option><option value="bebas">Kamera bebas</option></select>
+    <select id="ssy"><option value="3d">Peta 3D</option><option value="sat">Satelit</option></select>
+    <input type="time" id="sti" value="07:00" title="Jam berangkat"></div>
+</div>
 <div id="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script>
@@ -230,7 +251,7 @@ function draw(){
 /* ---------- panah & rute pengalihan ---------- */
 const brg=(a,b)=>{const r=Math.PI/180,dl=(b[1]-a[1])*r,y=Math.sin(dl)*Math.cos(b[0]*r),x=Math.cos(a[0]*r)*Math.sin(b[0]*r)-Math.sin(a[0]*r)*Math.cos(b[0]*r)*Math.cos(dl);return(Math.atan2(y,x)/r+360)%360};
 const fwd=(p,b,m)=>{const r=b*Math.PI/180;return[p.lat+m*Math.cos(r)/111000,p.lng+m*Math.sin(r)/(111000*Math.cos(p.lat*Math.PI/180))]};
-const arr=(b,z,f,st)=>L.divIcon({className:'',html:`<svg width="${z}" height="${z}" viewBox="0 0 24 24" style="transform:rotate(${b}deg);display:block"><path d="M12 1.5 22 22 12 17 2 22Z" fill="${f}" stroke="${st}" stroke-width="2" stroke-linejoin="round"/></svg>`,iconSize:[z,z],iconAnchor:[z/2,z/2]});
+const arr=(b,z,f,st,o)=>L.divIcon({className:'',html:`<svg width="${z}" height="${z}" viewBox="0 0 24 24" style="transform:rotate(${b}deg)${o?` translateY(${o}px)`:''};display:block"><path d="M12 1.5 22 22 12 17 2 22Z" fill="${f}" stroke="${st}" stroke-width="2" stroke-linejoin="round"/></svg>`,iconSize:[z,z],iconAnchor:[z/2,z/2]});
 const cur=()=>{map.getContainer().style.cursor=(dAlt!=null||arm)?'crosshair':''};
 const ALTC=['#7c3aed','#0891b2','#c026d3','#4d7c0f'],AR={},AT={};
 const ca=a=>{save();draw();routeAlt(a);ui()};
@@ -260,25 +281,27 @@ function addAltVia(a,ll){
 }
 function drawAlt(){
   if(!S.show.alt)return;
-  S.alt.forEach(a=>{
+  S.alt.forEach((a,ai)=>{
     const n=a.pts.length,c=a.color||'#7c3aed',ed=tab==='alih';
+    const lab='<b>Pengalihan '+(ai+1)+'</b><br>'+esc(a.from||'...')+' &#10132; '+esc(a.to||'...');
     if(!n)return;
     const lg=n>1?altLegs(a):[],all=[].concat(...lg);
     if(n>1){
       const cas=L.polyline(all,{color:'#fff',weight:11,opacity:.95,lineCap:'round',lineJoin:'round',interactive:ed}).addTo(gA);
       L.polyline(all,{color:c,weight:6,opacity:.95,dashArray:'12 8',interactive:false}).addTo(gA);
       cas.on('click',e=>{L.DomEvent.stopPropagation(e);addAltVia(a,e.latlng)});
-      L.marker(all[Math.floor(all.length/2)],{opacity:0,interactive:false,keyboard:false}).addTo(gA)
-        .bindTooltip(`<span style="background:${c}">${esc(a.from||'...')} &#10132; ${esc(a.to||'...')}</span>`,{permanent:true,direction:'top',className:'tt2'});
     }
     a.pts.forEach((p,i)=>{
       const last=n>1&&i===n-1,g=last?lg[n-2]:lg[i];
       let b=0;
       if(g&&g.length>1){const l=g.length;b=last?brg(g[Math.max(0,l-5)],g[l-1]):brg(g[0],g[Math.min(l-1,4)])}
       let m;
-      if(last)m=L.marker([p.lat,p.lng],{icon:arr(b,40,c,'#fff'),draggable:ed,interactive:ed,keyboard:false}).addTo(gA);
-      else{
-        if(n>1)L.marker(fwd(p,b,i===0?16:12),{icon:arr(b,24,'#fff',c),interactive:false,keyboard:false}).addTo(gA);
+      if(last){
+        const ea=L.marker([p.lat,p.lng],{icon:arr(b,30,c,'#fff',32),interactive:!ed,keyboard:false}).addTo(gA);
+        if(!ed)ea.bindPopup(lab);
+        if(ed)m=L.marker([p.lat,p.lng],{draggable:true,icon:ico('v','',14,'background:'+c)}).addTo(gA);
+      }else{
+        if(n>1){const sa=L.marker(fwd(p,b,i===0?16:12),{icon:arr(b,24,'#fff',c),interactive:!ed&&i===0,keyboard:false}).addTo(gA);if(!ed&&i===0)sa.bindPopup(lab)}
         if(ed)m=L.marker([p.lat,p.lng],{draggable:true,icon:i===0?ico('s','A',24,'background:'+c):ico('v','',12,'border-color:'+c)}).addTo(gA);
       }
       if(m){
@@ -304,6 +327,107 @@ function addPark(){
   S.park.push({id,name:'Parkir '+(S.park.length+1),kapasitas:'',pts:[[c.lat-d,c.lng-dl],[c.lat-d,c.lng+dl],[c.lat+d,c.lng+dl],[c.lat+d,c.lng-dl]]});
   sel=id;S.show.park=1;commit();toast('Seret titik putih untuk membentuk lahan. Klik + untuk menambah titik, klik kanan untuk menghapus.');
 }
+
+/* ---------- simulasi 3D (modal) ---------- */
+let SM=null;
+const sim={d:0,play:false,last:0,C:[],cum:[],tot:0,mk:[],pm:[],pe:[],cv:null,bear:0};
+const STY={'3d':'https://tiles.openfreemap.org/styles/liberty','sat':{version:8,sources:{s:{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],tileSize:256,maxzoom:19,attribution:'Tiles \u00a9 Esri'}},layers:[{id:'s',type:'raster',source:'s'}]}};
+const loadML=()=>new Promise((ok,no)=>{
+  if(window.maplibregl)return ok();
+  const l=document.createElement('link');l.rel='stylesheet';l.href='https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.12.0/maplibre-gl.css';document.head.appendChild(l);
+  const j=document.createElement('script');j.src='https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.12.0/maplibre-gl.js';j.onload=ok;j.onerror=no;document.head.appendChild(j);
+});
+function clk(d){
+  const t=($('#sti').value||'07:00').split(':').map(Number),m=t[0]*60+t[1]+d/1000/(S.speed||3)*60;
+  return String(Math.floor(m/60)%24).padStart(2,'0')+'.'+String(Math.floor(m%60)).padStart(2,'0');
+}
+function at(d){
+  const C=sim.C,cu=sim.cum;let i=1;
+  while(i<C.length-1&&cu[i]<d)i++;
+  const f=cu[i]>cu[i-1]?Math.min(1,Math.max(0,(d-cu[i-1])/(cu[i]-cu[i-1]))):0,p=C[i-1],q=C[i];
+  return{lat:p[0]+(q[0]-p[0])*f,lng:p[1]+(q[1]-p[1])*f};
+}
+function bearAt(d){
+  const a=at(d),b=at(Math.min(sim.tot,d+40));
+  return(a.lat===b.lat&&a.lng===b.lng)?sim.bear:brg([a.lat,a.lng],[b.lat,b.lng]);
+}
+function plist(){
+  $('#st3').innerHTML=sim.pe.length?'<div class="mut">Perkiraan pos dilewati</div>'+sim.pe.map(e=>`<div>P${e.i+1} ${esc(e.name)}: <b>${e.hit?clk(e.at):'di luar rute'}</b></div>`).join(''):'<div class="mut">Belum ada pos jaga.</div>';
+}
+function upd(){
+  const p=at(sim.d);
+  sim.cv.setLngLat([p.lng,p.lat]);
+  $('#ssl').value=Math.round(sim.d);
+  $('#st2').innerHTML=`Jam <b>${clk(sim.d)}</b> &bull; ${(sim.d/1000).toFixed(2)} / ${(sim.tot/1000).toFixed(2)} km`;
+  sim.pe.forEach(e=>{const el=sim.pm[e.i];if(el)el.classList.toggle('on',e.hit&&sim.d>=e.at-30&&sim.d<=e.at+60)});
+  if($('#sca').value==='ikut'){
+    const t=bearAt(sim.d),df=((t-sim.bear+540)%360)-180;
+    sim.bear=(sim.bear+df*0.08+360)%360;
+    SM.jumpTo({center:[p.lng,p.lat],bearing:sim.bear});
+  }
+}
+function frame(ts){
+  if(!sim.play)return;
+  const dt=Math.min(.1,(ts-sim.last)/1000);sim.last=ts;
+  sim.d=Math.min(sim.tot,sim.d+dt*(S.speed||3)/3.6*(+$('#ssp').value));
+  upd();
+  if(sim.d>=sim.tot){sim.play=false;$('#spl').innerHTML='&#9654; Putar ulang';return}
+  requestAnimationFrame(frame);
+}
+function addSimLayers(){
+  const ll=a=>a.map(q=>[q[1],q[0]]);
+  SM.addSource('rt',{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:ll(sim.C)}}});
+  SM.addLayer({id:'rt-c',type:'line',source:'rt',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#ffffff','line-width':12}});
+  SM.addLayer({id:'rt-l',type:'line',source:'rt',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':S.color,'line-width':7}});
+  SM.addSource('pk',{type:'geojson',data:{type:'FeatureCollection',features:S.park.map(a=>({type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[ll(a.pts.concat([a.pts[0]]))]}}))}});
+  SM.addLayer({id:'pk-x',type:'fill-extrusion',source:'pk',paint:{'fill-extrusion-color':'#1c7ed6','fill-extrusion-height':2.5,'fill-extrusion-opacity':.65}});
+  SM.addSource('al',{type:'geojson',data:{type:'FeatureCollection',features:S.alt.filter(a=>a.pts.length>1).map(a=>({type:'Feature',properties:{c:a.color||'#7c3aed'},geometry:{type:'LineString',coordinates:ll([].concat(...altLegs(a)))}}))}});
+  SM.addLayer({id:'al-l',type:'line',source:'al',paint:{'line-color':['get','c'],'line-width':5,'line-dasharray':[2,1.5]}});
+}
+function addSimMarkers(){
+  sim.mk.forEach(m=>m.remove());sim.mk=[];sim.pm=[];
+  const add=(h,ll,o)=>{const d=document.createElement('div');d.innerHTML=h;const m=new maplibregl.Marker(Object.assign({element:d},o)).setLngLat([ll[1],ll[0]]).addTo(SM);sim.mk.push(m);return d};
+  let k=0;
+  S.pts.forEach((p,i)=>{if(p.via)return;k++;add(`<div class="mk s" style="background:${i===0?'#14263b':i===S.pts.length-1?'#2f9e44':S.color}">${k}</div>`,[p.lat,p.lng])});
+  S.pos.forEach((p,i)=>{sim.pm[i]=add(`<div class="mk p">P${i+1}</div>`,[p.lat,p.lng]).firstChild});
+  S.alt.forEach(a=>{
+    if(a.pts.length<2)return;
+    const lg=altLegs(a),g=lg[lg.length-1],l=g.length,b=l>1?brg(g[Math.max(0,l-5)],g[l-1]):0,e=a.pts[a.pts.length-1],q=fwd(e,(b+180)%360,12);
+    add(`<svg width="34" height="34" viewBox="0 0 24 24" style="display:block"><path d="M12 1.5 22 22 12 17 2 22Z" fill="${a.color||'#7c3aed'}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>`,q,{rotation:b,rotationAlignment:'map',pitchAlignment:'map'});
+  });
+  const c0=sim.C[0];
+  sim.cv=new maplibregl.Marker({element:Object.assign(document.createElement('div'),{className:'cv'})}).setLngLat([c0[1],c0[0]]).addTo(SM);
+  sim.mk.push(sim.cv);
+}
+async function openSim(){
+  const C=[].concat(...legsArr());
+  if(S.pts.length<2||C.length<2){toast('Buat rute dulu (minimal 2 titik)');return}
+  try{await loadML()}catch(e){toast('Gagal memuat pustaka 3D. Periksa koneksi internet.');return}
+  $('#sim').classList.add('on');
+  sim.C=C;sim.cum=[0];
+  for(let i=1;i<C.length;i++)sim.cum.push(sim.cum[i-1]+map.distance(C[i-1],C[i]));
+  sim.tot=sim.cum[C.length-1];sim.d=0;sim.play=false;sim.bear=0;
+  sim.pe=S.pos.map((p,i)=>{let best=1e9,bi=0;C.forEach((q,j)=>{const d=map.distance([p.lat,p.lng],q);if(d<best){best=d;bi=j}});return{i,name:p.name,at:sim.cum[bi],hit:best<=80}});
+  $('#st1').textContent='Simulasi 3D - '+(S.event||'Event');
+  $('#spl').innerHTML='&#9654; Putar';$('#ssl').max=Math.max(1,Math.round(sim.tot));$('#ssl').value=0;
+  plist();
+  if(SM){SM.remove();SM=null}
+  SM=new maplibregl.Map({container:'sm',style:STY[$('#ssy').value],center:[C[0][1],C[0][0]],zoom:17,pitch:62,maxPitch:80});
+  SM.on('load',()=>{addSimLayers();addSimMarkers();sim.bear=bearAt(0);SM.jumpTo({center:[C[0][1],C[0][0]],bearing:sim.bear});upd()});
+}
+function closeSim(){sim.play=false;$('#sim').classList.remove('on');if(SM){SM.remove();SM=null}}
+$('#sx').addEventListener('click',closeSim);
+$('#spl').addEventListener('click',()=>{
+  if(!SM)return;
+  if(sim.d>=sim.tot)sim.d=0;
+  sim.play=!sim.play;
+  $('#spl').innerHTML=sim.play?'&#10074;&#10074; Jeda':'&#9654; Putar';
+  if(sim.play){sim.last=performance.now();requestAnimationFrame(frame)}
+});
+$('#srs').addEventListener('click',()=>{if(!SM)return;sim.play=false;sim.d=0;$('#spl').innerHTML='&#9654; Putar';upd()});
+$('#ssl').addEventListener('input',e=>{if(!SM)return;sim.d=+e.target.value;upd()});
+$('#sti').addEventListener('input',()=>{if(SM){plist();upd()}});
+$('#ssy').addEventListener('change',e=>{if(!SM)return;SM.setStyle(STY[e.target.value],{diff:false});SM.once('style.load',addSimLayers)});
 
 /* ---------- cetak gambar ---------- */
 const LBL={rute:'Rute',pos:'Pos jaga',park:'Parkir',alt:'Pengalihan'};
@@ -339,7 +463,7 @@ function snap(keys){
     line(all,'#fff',11);line(all,col,6,[12,8]);
     a.pts.forEach((p,i)=>{const last=i===n-1,g=last?g2[n-2]:g2[i];let b=0;
       if(g&&g.length>1){const l=g.length;b=last?brg(g[Math.max(0,l-5)],g[l-1]):brg(g[0],g[Math.min(l-1,4)])}
-      if(last)arrow(P([p.lat,p.lng]),b,40,col,'#fff');else arrow(P(fwd(p,b,i?12:16)),b,24,'#fff',col)});
+      if(last){const q=P([p.lat,p.lng]),r=b*Math.PI/180;arrow([q[0]-32*Math.sin(r),q[1]+32*Math.cos(r)],b,30,col,'#fff')}else arrow(P(fwd(p,b,i?12:16)),b,24,'#fff',col)});
     const m=all[Math.floor(all.length/2)];pill((a.from||'...')+' \u2192 '+(a.to||'...'),m[0],m[1]-20,col);
   });
   if(has('alt')&&S.alt.length){lg.push(['Pengalihan',1]);S.alt.forEach((a,i)=>lg.push([cut((i+1)+'. '+(a.from||'...')+' \u2192 '+(a.to||'...'),48)]))}
@@ -421,7 +545,7 @@ function ui(){
     <input data-t="park" data-id="${a.id}" data-f="kapasitas" value="${esc(a.kapasitas)}" placeholder="Kapasitas, misal 40 bus / 120 motor">
     <div class="row"><button data-a="edit" data-id="${a.id}">${sel===a.id?'Selesai edit':'Edit bentuk'}</button><button class="dg" data-a="del" data-t="park" data-id="${a.id}">Hapus</button></div></div>`);
   }
-  h+=`<div class="row" style="margin-top:6px"><button data-a="prt" class="pr">Cetak gambar</button><button data-a="exp">Simpan JSON</button><button data-a="imp">Buka JSON</button></div><input id="fi" type="file" accept=".json" hidden>`;
+  h+=`<div class="row" style="margin-top:6px"><button data-a="sim" class="pr" style="flex:1">Simulasi 3D</button><button data-a="prt" style="flex:1">Cetak gambar</button></div><div class="row"><button data-a="exp" style="flex:1">Simpan JSON</button><button data-a="imp" style="flex:1">Buka JSON</button></div><input id="fi" type="file" accept=".json" hidden>`;
   $('#sc').innerHTML=h;stats();
 }
 const A=document.querySelector('aside');
@@ -448,6 +572,7 @@ A.addEventListener('click',e=>{
   else if(a==='cari')cari();
   else if(a==='exp'){const u=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'})),l=document.createElement('a');l.href=u;l.download=(S.event||'rute').replace(/\W+/g,'-')+'.json';l.click();URL.revokeObjectURL(u)}
   else if(a==='prt')openPrint();
+  else if(a==='sim')openSim();
   else if(a==='imp')$('#fi').click();
 });
 A.addEventListener('change',e=>{
