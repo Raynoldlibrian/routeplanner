@@ -70,7 +70,18 @@ button.dg{color:#b42318}
 #sb select,#sb input[type=time]{width:auto}
 .mk.p{transition:transform .2s,background .2s}
 .mk.p.on{background:#16a34a;transform:scale(1.35)}
-.cv{width:22px;height:22px;border-radius:50%;background:#e8590c;border:3px solid #fff;box-shadow:0 0 0 6px #e8590c55,0 2px 8px #0008}
+.pt{position:relative;width:26px;height:52px}
+.pt svg{position:relative;display:block;filter:drop-shadow(0 2px 3px #0009)}
+.pt .hl{position:absolute;left:50%;top:50%;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;animation:hb .7s infinite}
+.pt .lb{animation:fb .7s infinite}
+.pt .lr{animation:fr .7s infinite}
+@keyframes fb{0%,40%{opacity:1;filter:drop-shadow(0 0 6px #60a5fa)}50%,100%{opacity:.15;filter:none}}
+@keyframes fr{0%,50%{opacity:.15;filter:none}60%,90%{opacity:1;filter:drop-shadow(0 0 6px #f87171)}100%{opacity:.15}}
+@keyframes hb{0%,45%{background:radial-gradient(circle,#3b82f69c 0,#3b82f600 68%)}50%,95%{background:radial-gradient(circle,#ef44449c 0,#ef444400 68%)}}
+.sg svg{display:block;filter:drop-shadow(0 1px 2px #0008)}
+.pal{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.sgb{padding:4px;display:flex;justify-content:center}
+.sgb.on{background:#dbeafe;border-color:#1c7ed6}
 #toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:999px;z-index:9999;display:none;max-width:90vw}
 @media(max-width:800px){#app{grid-template-columns:1fr;grid-template-rows:62% 1fr}main{order:-1;grid-template-rows:1fr 140px}aside{border-right:0;border-top:1px solid var(--line)}}
 </style>
@@ -113,8 +124,8 @@ const esc=t=>String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 function load(){try{return JSON.parse(localStorage.getItem('rp1'))}catch(e){return null}}
 function save(){try{localStorage.setItem('rp1',JSON.stringify(S))}catch(e){}}
 let S=load()||{event:'Event baru',prof:'foot',speed:3,color:'#e8590c',pts:[],pos:[],park:[],nid:1,view:[-0.3749,102.5456,15]};
-S.show=S.show||{rute:1,pos:1,park:1,alt:1};if(S.show.alt==null)S.show.alt=1;S.alt=S.alt||[];
-let tab='rute',arm=null,sel=null,dAlt=null,R={dist:0,names:[],legs:[],err:''},rid=0,tt;
+S.show=S.show||{rute:1,pos:1,park:1,alt:1};if(S.show.alt==null)S.show.alt=1;S.alt=S.alt||[];S.sign=S.sign||[];
+let tab='rute',arm=null,armSign=null,sel=null,dAlt=null,R={dist:0,names:[],legs:[],err:''},rid=0,tt;
 
 const map=L.map('map').setView([S.view[0],S.view[1]],S.view[2]);
 const osmA='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
@@ -217,7 +228,7 @@ $('#info').addEventListener('input',e=>{
 
 /* ---------- gambar marker, pos, parkir ---------- */
 function draw(){
-  gM.clearLayers();gP.clearLayers();gK.clearLayers();gE.clearLayers();gA.clearLayers();drawRoute();drawAlt();
+  gM.clearLayers();gP.clearLayers();gK.clearLayers();gE.clearLayers();gA.clearLayers();drawRoute();drawAlt();drawSign();
   let k=0;
   S.show.rute&&S.pts.forEach((p,i)=>{
     if(p.via&&tab!=='rute')return;
@@ -312,8 +323,43 @@ function drawAlt(){
   });
 }
 
+/* ---------- rambu ---------- */
+const SGN={masuk:'Dilarang masuk','tutup':'Jalan ditutup',henti:'Dilarang berhenti',parkir:'Dilarang parkir','larang-kiri':'Dilarang belok kiri','larang-kanan':'Dilarang belok kanan','larang-putar':'Dilarang putar balik',kiri:'Belok kiri',kanan:'Belok kanan',lurus:'Lurus'};
+const RED='<circle cx="20" cy="20" r="18" fill="#dc2626"/>',WHT='<circle cx="20" cy="20" r="14.5" fill="#fff"/>',BLU='<circle cx="20" cy="20" r="18" fill="#1d4ed8" stroke="#fff" stroke-width="2"/>';
+const AL='<path d="M23 31V19H15" fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round"/><path d="M16 13 9 19 16 25Z" fill="#fff"/>';
+const AR2='<path d="M17 31V19H25" fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round"/><path d="M24 13 31 19 24 25Z" fill="#fff"/>';
+const blk=x=>x.replace(/#fff/g,'#111');
+const SGB={
+  masuk:RED+'<rect x="9" y="17" width="22" height="6" rx="1" fill="#fff"/>',
+  tutup:'<rect x="2" y="12" width="36" height="16" fill="#fff" stroke="#dc2626" stroke-width="2"/><path d="M2 28 8 12H14L8 28ZM14 28 20 12H26L20 28ZM26 28 32 12H38L32 28Z" fill="#dc2626"/>',
+  henti:RED+'<circle cx="20" cy="20" r="14.5" fill="#1d4ed8"/><path d="M12 12 28 28M28 12 12 28" stroke="#dc2626" stroke-width="4" stroke-linecap="round"/>',
+  parkir:RED+'<circle cx="20" cy="20" r="14.5" fill="#1d4ed8"/><path d="M11 29 29 11" stroke="#dc2626" stroke-width="4" stroke-linecap="round"/>',
+  'larang-kiri':RED+WHT+blk(AL)+'<path d="M10 30 30 10" stroke="#dc2626" stroke-width="3.5" stroke-linecap="round"/>',
+  'larang-kanan':RED+WHT+blk(AR2)+'<path d="M30 30 10 10" stroke="#dc2626" stroke-width="3.5" stroke-linecap="round"/>',
+  'larang-putar':RED+WHT+'<path d="M14 30V17a6 6 0 0 1 12 0v4" fill="none" stroke="#111" stroke-width="4"/><path d="M20 20h12l-6 8z" fill="#111"/><path d="M10 30 30 10" stroke="#dc2626" stroke-width="3.5" stroke-linecap="round"/>',
+  kiri:BLU+AL,kanan:BLU+AR2,
+  lurus:BLU+'<path d="M20 31V17" stroke="#fff" stroke-width="4"/><path d="M12 18 20 8 28 18Z" fill="#fff"/>'
+};
+const signSvg=(t,z)=>`<svg xmlns="http://www.w3.org/2000/svg" width="${z}" height="${z}" viewBox="0 0 40 40">${SGB[t]||''}</svg>`;
+const SIMG={};
+const sImg=t=>{if(!SIMG[t]){const im=new Image();im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(signSvg(t,80));SIMG[t]=im}return SIMG[t]};
+Object.keys(SGB).forEach(sImg);
+function drawSign(){
+  if(!S.show.alt)return;
+  const ed=tab==='alih';
+  S.sign.forEach(g=>{
+    const m=L.marker([g.lat,g.lng],{draggable:ed,keyboard:false,icon:L.divIcon({className:'',html:`<div class="sg">${signSvg(g.type,36)}</div>`,iconSize:[36,36],iconAnchor:[18,18]})}).addTo(gA);
+    if(!ed)m.bindPopup('<b>'+esc(SGN[g.type])+'</b>'+(g.note?'<br>'+esc(g.note):''));
+    else{
+      m.on('dragend',()=>{const q=m.getLatLng();g.lat=q.lat;g.lng=q.lng;save()});
+      m.on('contextmenu',()=>{S.sign=S.sign.filter(x=>x!==g);save();draw();ui()});
+    }
+  });
+}
+
 /* ---------- peta: klik ---------- */
 map.on('click',e=>{
+  if(arm==='sign'){S.sign.push({id:S.nid++,type:armSign,lat:e.latlng.lat,lng:e.latlng.lng,note:''});S.show.alt=1;save();draw();ui();return}
   if(arm==='pos'){
     S.pos.push({id:S.nid++,name:'Pos baru',lat:e.latlng.lat,lng:e.latlng.lng,personil:'2 orang',tugas:'Pengamanan',jam:'07.00-11.00'});
     S.show.pos=1;arm=null;map.getContainer().style.cursor='';commit();return;
@@ -330,7 +376,8 @@ function addPark(){
 
 /* ---------- simulasi 3D (modal) ---------- */
 let SM=null;
-const sim={d:0,play:false,last:0,C:[],cum:[],tot:0,mk:[],pm:[],pe:[],cv:null,bear:0};
+const CAR='<div class="pt"><div class="hl"></div><svg width="26" height="52" viewBox="0 0 26 52"><rect x="3" y="2" width="20" height="48" rx="9" fill="#fff" stroke="#14263b" stroke-width="2"/><rect x="5.5" y="11" width="15" height="9" rx="2" fill="#1e293b"/><rect x="5.5" y="34" width="15" height="7" rx="2" fill="#1e293b"/><rect x="3" y="22" width="20" height="10" fill="#14263b"/><rect class="lb" x="5" y="24" width="8" height="6" rx="1.5" fill="#3b82f6"/><rect class="lr" x="13" y="24" width="8" height="6" rx="1.5" fill="#ef4444"/><rect x="5" y="3.5" width="4" height="3" rx="1" fill="#fde047"/><rect x="17" y="3.5" width="4" height="3" rx="1" fill="#fde047"/></svg></div>';
+const sim={d:0,play:false,last:0,C:[],cum:[],tot:0,mk:[],pm:[],pe:[],cv:null,bear:0,cb:0};
 const STY={'3d':'https://tiles.openfreemap.org/styles/liberty','sat':{version:8,sources:{s:{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],tileSize:256,maxzoom:19,attribution:'Tiles \u00a9 Esri'}},layers:[{id:'s',type:'raster',source:'s'}]}};
 const loadML=()=>new Promise((ok,no)=>{
   if(window.maplibregl)return ok();
@@ -356,7 +403,8 @@ function plist(){
 }
 function upd(){
   const p=at(sim.d);
-  sim.cv.setLngLat([p.lng,p.lat]);
+  const tb=bearAt(sim.d),dc=((tb-sim.cb+540)%360)-180;sim.cb=(sim.cb+dc*0.25+360)%360;
+  sim.cv.setLngLat([p.lng,p.lat]).setRotation(sim.cb);
   $('#ssl').value=Math.round(sim.d);
   $('#st2').innerHTML=`Jam <b>${clk(sim.d)}</b> &bull; ${(sim.d/1000).toFixed(2)} / ${(sim.tot/1000).toFixed(2)} km`;
   sim.pe.forEach(e=>{const el=sim.pm[e.i];if(el)el.classList.toggle('on',e.hit&&sim.d>=e.at-30&&sim.d<=e.at+60)});
@@ -395,8 +443,10 @@ function addSimMarkers(){
     const lg=altLegs(a),g=lg[lg.length-1],l=g.length,b=l>1?brg(g[Math.max(0,l-5)],g[l-1]):0,e=a.pts[a.pts.length-1],q=fwd(e,(b+180)%360,12);
     add(`<svg width="34" height="34" viewBox="0 0 24 24" style="display:block"><path d="M12 1.5 22 22 12 17 2 22Z" fill="${a.color||'#7c3aed'}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>`,q,{rotation:b,rotationAlignment:'map',pitchAlignment:'map'});
   });
-  const c0=sim.C[0];
-  sim.cv=new maplibregl.Marker({element:Object.assign(document.createElement('div'),{className:'cv'})}).setLngLat([c0[1],c0[0]]).addTo(SM);
+  S.sign.forEach(g=>add(`<div style="filter:drop-shadow(0 2px 3px #0009)">${signSvg(g.type,36)}</div>`,[g.lat,g.lng]));
+  const c0=sim.C[0],ce=document.createElement('div');
+  ce.innerHTML=CAR;
+  sim.cv=new maplibregl.Marker({element:ce,rotationAlignment:'map',pitchAlignment:'map'}).setLngLat([c0[1],c0[0]]).setRotation(sim.cb).addTo(SM);
   sim.mk.push(sim.cv);
 }
 async function openSim(){
@@ -413,7 +463,7 @@ async function openSim(){
   plist();
   if(SM){SM.remove();SM=null}
   SM=new maplibregl.Map({container:'sm',style:STY[$('#ssy').value],center:[C[0][1],C[0][0]],zoom:17,pitch:62,maxPitch:80});
-  SM.on('load',()=>{addSimLayers();addSimMarkers();sim.bear=bearAt(0);SM.jumpTo({center:[C[0][1],C[0][0]],bearing:sim.bear});upd()});
+  SM.on('load',()=>{addSimLayers();addSimMarkers();sim.bear=sim.cb=bearAt(0);SM.jumpTo({center:[C[0][1],C[0][0]],bearing:sim.bear});upd()});
 }
 function closeSim(){sim.play=false;$('#sim').classList.remove('on');if(SM){SM.remove();SM=null}}
 $('#sx').addEventListener('click',closeSim);
@@ -466,6 +516,8 @@ function snap(keys){
       if(last){const q=P([p.lat,p.lng]),r=b*Math.PI/180;arrow([q[0]-32*Math.sin(r),q[1]+32*Math.cos(r)],b,30,col,'#fff')}else arrow(P(fwd(p,b,i?12:16)),b,24,'#fff',col)});
     const m=all[Math.floor(all.length/2)];pill((a.from||'...')+' \u2192 '+(a.to||'...'),m[0],m[1]-20,col);
   });
+  if(has('alt'))S.sign.forEach(g=>{const im=sImg(g.type),q=P([g.lat,g.lng]);if(im.complete&&im.naturalWidth)c.drawImage(im,q[0]-18,q[1]-18,36,36)});
+  if(has('alt')&&S.sign.length){lg.push(['Rambu',1]);S.sign.forEach(g=>lg.push([cut(SGN[g.type]+(g.note?': '+g.note:''),48)]))}
   if(has('alt')&&S.alt.length){lg.push(['Pengalihan',1]);S.alt.forEach((a,i)=>lg.push([cut((i+1)+'. '+(a.from||'...')+' \u2192 '+(a.to||'...'),48)]))}
   if(has('rute')&&S.pts.length>1){
     lg.push(['Rute: '+fmt(),1]);let k=0;
@@ -539,6 +591,8 @@ function ui(){
     <input data-t="alt" data-id="${a.id}" data-f="to" value="${esc(a.to)}" placeholder="Ke jalan...">
     <div class="mut">${a.pts.length} titik${AR[a.id]?' &bull; '+(AR[a.id].dist/1000).toFixed(2)+' km':''}</div>
     <div class="row"><button data-a="drawalt" data-id="${a.id}">${dAlt===a.id?'Selesai menggambar':'Gambar / lanjutkan'}</button><button class="dg" data-a="del" data-t="alt" data-id="${a.id}">Hapus</button></div></div>`);
+    h+=`<div class="mut" style="margin-top:6px"><b>Rambu</b>: klik ikon, lalu klik peta. Klik ikon yang sama lagi untuk berhenti.</div><div class="pal">${Object.keys(SGN).map(t=>`<button class="sgb ${arm==='sign'&&armSign===t?'on':''}" data-a="sgn" data-v="${t}" title="${SGN[t]}">${signSvg(t,32)}</button>`).join('')}</div>`;
+    S.sign.forEach(g=>h+=`<div class="card"><div class="row"><span style="flex:none;width:28px">${signSvg(g.type,28)}</span><b style="align-self:center">${SGN[g.type]}</b></div><input data-t="sign" data-id="${g.id}" data-f="note" value="${esc(g.note)}" placeholder="Keterangan (opsional)"><div class="row"><button data-a="goto" data-t="sign" data-id="${g.id}">Lihat di peta</button><button class="dg" data-a="del" data-t="sign" data-id="${g.id}">Hapus</button></div></div>`);
   }else{
     h=`<button class="pr" data-a="addpark">+ Tambah parkir</button>`;
     S.park.forEach(a=>h+=`<div class="card ${sel===a.id?'on':''}"><input data-t="park" data-id="${a.id}" data-f="name" value="${esc(a.name)}">
@@ -564,7 +618,7 @@ A.addEventListener('click',e=>{
   else if(a==='addpark')addPark();
   else if(a==='edit'){sel=sel==+d.id?null:+d.id;draw();ui()}
   else if(a==='del'){S[d.t]=S[d.t].filter(x=>x.id!=d.id);if(sel==d.id)sel=null;if(dAlt==d.id){dAlt=null;cur()}delete AR[d.id];commit()}
-  else if(a==='goto'){const p=S.pos.find(x=>x.id==d.id);map.setView([p.lat,p.lng],17)}
+  else if(a==='goto'){const p=S[d.t].find(x=>x.id==d.id);map.setView([p.lat,p.lng],17)}
   else if(a==='clr'){if(confirm('Hapus semua titik rute?')){S.pts=[];commit()}}
   else if(a==='addalt'){const n2={id:S.nid++,color:ALTC[S.alt.length%ALTC.length],pts:[]};S.alt.push(n2);S.show.alt=1;dAlt=n2.id;cur();save();draw();ui();toast('Klik peta: titik awal, titik belokan, lalu titik akhir. Tekan Selesai bila sudah.')}
   else if(a==='drawalt'){dAlt=dAlt==+d.id?null:+d.id;cur();ui()}
@@ -573,12 +627,13 @@ A.addEventListener('click',e=>{
   else if(a==='exp'){const u=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'})),l=document.createElement('a');l.href=u;l.download=(S.event||'rute').replace(/\W+/g,'-')+'.json';l.click();URL.revokeObjectURL(u)}
   else if(a==='prt')openPrint();
   else if(a==='sim')openSim();
+  else if(a==='sgn'){arm=(arm==='sign'&&armSign===d.v)?null:'sign';armSign=d.v;cur();ui();if(arm)toast('Klik peta untuk menaruh rambu')}
   else if(a==='imp')$('#fi').click();
 });
 A.addEventListener('change',e=>{
   if(e.target.id!=='fi')return;
   const f=e.target.files[0];if(!f)return;
-  f.text().then(t=>{try{const j=JSON.parse(t);if(!Array.isArray(j.pts)||!Array.isArray(j.pos)||!Array.isArray(j.park))throw 0;S=Object.assign(S,j);S.alt=j.alt||[];S.show=Object.assign({rute:1,pos:1,park:1,alt:1},j.show);sel=null;dAlt=null;commit();S.alt.forEach(routeAlt);map.setView([S.view[0],S.view[1]],S.view[2]);toast('Data dibuka')}catch(x){toast('File JSON tidak dikenali')}});
+  f.text().then(t=>{try{const j=JSON.parse(t);if(!Array.isArray(j.pts)||!Array.isArray(j.pos)||!Array.isArray(j.park))throw 0;S=Object.assign(S,j);S.alt=j.alt||[];S.sign=j.sign||[];S.show=Object.assign({rute:1,pos:1,park:1,alt:1},j.show);sel=null;dAlt=null;commit();S.alt.forEach(routeAlt);map.setView([S.view[0],S.view[1]],S.view[2]);toast('Data dibuka')}catch(x){toast('File JSON tidak dikenali')}});
 });
 async function cari(){
   const q=$('#q').value.trim();if(!q)return;
