@@ -172,6 +172,22 @@ const commit=()=>{save();draw();route();ui()};
 /* ---------- rute mengikuti jalan ---------- */
 const legsArr=()=>R.legs.length?R.legs:S.pts.slice(0,-1).map((p,i)=>[[p.lat,p.lng],[S.pts[i+1].lat,S.pts[i+1].lng]]);
 const straight=()=>S.pts.slice(1).reduce((a,p,i)=>a+map.distance([S.pts[i].lat,S.pts[i].lng],[p.lat,p.lng]),0);
+function arrowsFor(legs){
+  const st=[];S.pts.forEach((p,i)=>{if(!p.via)st.push(i)});
+  const out=[];
+  for(let k=0;k<st.length-1;k++){
+    const cs=[].concat(...legs.slice(st[k],st[k+1]));
+    if(cs.length<2)continue;
+    if(k===0){let j=1;while(j<cs.length-1&&map.distance(cs[0],cs[j])<8)j++;out.push({lat:cs[0][0],lng:cs[0][1],b:brg(cs[0],cs[j]),st:true})}
+    const cum=[0];
+    for(let i=1;i<cs.length;i++)cum.push(cum[i-1]+map.distance(cs[i-1],cs[i]));
+    const h=cum[cum.length-1]/2;let i=1;
+    while(i<cs.length-1&&cum[i]<h)i++;
+    const f=cum[i]>cum[i-1]?(h-cum[i-1])/(cum[i]-cum[i-1]):0,a=cs[i-1],b=cs[i];
+    out.push({lat:a[0]+(b[0]-a[0])*f,lng:a[1]+(b[1]-a[1])*f,b:brg(a,b)});
+  }
+  return out;
+}
 async function route(){
   const id=++rid;
   if(S.pts.length<2){R={dist:0,names:[],legs:[],err:''};drawRoute();stats();return}
@@ -182,9 +198,9 @@ async function route(){
     if(id!==rid)return;
     if(j.code!=='Ok')throw 0;
     const rt=j.routes[0],names=[];
-    const inf=[],ar=[];
-    const legs=rt.legs.map((l,li)=>{const cs=[],ln=[];let u=0;l.steps.forEach(s=>{if(!s.name&&s.distance>=40)u=1;const mv=s.maneuver;if(mv&&((li===0&&mv.type==='depart'&&s===l.steps[0])||(['turn','end of road','fork'].includes(mv.type)&&mv.modifier!=='straight')))ar.push({lat:mv.location[1],lng:mv.location[0],b:mv.bearing_after,st:mv.type==='depart'});s.geometry.coordinates.forEach(x=>cs.push([x[1],x[0]]));if(s.name&&ln[ln.length-1]!==s.name)ln.push(s.name);if(s.name&&names[names.length-1]!==s.name)names.push(s.name)});inf.push({d:l.distance,n:ln,u});return cs});
-    R={dist:rt.distance,names,legs,info:inf,arrows:ar,err:''};
+    const inf=[];
+    const legs=rt.legs.map(l=>{const cs=[],ln=[];let u=0;l.steps.forEach(s=>{if(!s.name&&s.distance>=40)u=1;s.geometry.coordinates.forEach(x=>cs.push([x[1],x[0]]));if(s.name&&ln[ln.length-1]!==s.name)ln.push(s.name);if(s.name&&names[names.length-1]!==s.name)names.push(s.name)});inf.push({d:l.distance,n:ln,u});return cs});
+    R={dist:rt.distance,names,legs,info:inf,arrows:arrowsFor(legs),err:''};
   }catch(e){
     if(id!==rid)return;
     R={dist:straight(),names:[],legs:[],err:'Routing gagal, memakai garis lurus sementara'};
@@ -205,7 +221,7 @@ function drawRoute(){
   const cas=L.polyline(all,{color:'#fff',weight:13,opacity:.95,lineCap:'round',lineJoin:'round',interactive:tab==='rute'}).addTo(gR);
   L.polyline(all,{color:S.color,weight:8,opacity:.9,lineCap:'round',lineJoin:'round',dashArray:R.err?'2 10':null,interactive:false}).addTo(gR);
   cas.on('click',e=>{L.DomEvent.stopPropagation(e);addVia(e.latlng)});
-  (R.arrows||[]).forEach(a=>L.marker(fwd(a,a.b,a.st?22:10),{icon:arr(a.b,a.st?28:22,'#fff',S.color),interactive:false,keyboard:false}).addTo(gR));
+  (R.arrows||[]).forEach(a=>L.marker(fwd(a,a.b,a.st?22:0),{icon:arr(a.b,a.st?28:22,'#fff',S.color),interactive:false,keyboard:false}).addTo(gR));
 }
 function fmt(m){const d=R.dist/1000/(S.speed||3)*60;return (R.dist/1000).toFixed(2)+' km • '+(d>=60?Math.floor(d/60)+' jam '+Math.round(d%60)+' menit':Math.round(d)+' menit')}
 function stats(){
@@ -560,7 +576,7 @@ function snap(keys,o){
     lg.push([cut(a.name+(a.kapasitas?' - '+a.kapasitas:''),48)])})}
   if(has('rute')&&S.pts.length>1){
     line([].concat(...legsArr()).map(P),'#fff',13);line([].concat(...legsArr()).map(P),S.color,8);
-    (R.arrows||[]).forEach(a=>arrow(P(fwd(a,a.b,a.st?22:10)),a.b,a.st?28:22,'#fff',S.color));
+    (R.arrows||[]).forEach(a=>arrow(P(fwd(a,a.b,a.st?22:0)),a.b,a.st?28:22,'#fff',S.color));
   }
   if(has('alt'))S.alt.forEach((a,ai)=>{
     const n=a.pts.length,col=a.color||'#7c3aed';if(n<2)return;
@@ -627,13 +643,13 @@ const tilesReady=()=>new Promise(r=>{
     else setTimeout(chk,120);
   })();
 });
-async function shot(target,asp,maxZ){
+async function shot(target,asp,maxZ,keys){
   const el=map.getContainer(),W=el.clientWidth,H=el.clientHeight,K=2;
   const cw=Math.floor(Math.min(W*.98,H*.98*asp)),ch=Math.floor(cw/asp);
   if(Array.isArray(target))map.setView(target,maxZ,{animate:false});
   else{const z=Math.min(maxZ||18,map.getBoundsZoom(target,false,L.point(W-cw+70,H-ch+70)));map.setView(target.getCenter(),z,{animate:false})}
   await tilesReady();
-  const cv=snap(['rute','pos','park','alt'],{clean:true}),o=document.createElement('canvas');
+  const cv=snap(keys||['rute','pos','park','alt'],{clean:true}),o=document.createElement('canvas');
   o.width=cw*K;o.height=ch*K;
   const c=o.getContext('2d');
   c.drawImage(cv,Math.floor((W-cw)/2)*K,Math.floor((H-ch)/2)*K,cw*K,ch*K,0,0,cw*K,ch*K);
@@ -677,7 +693,7 @@ async function buildSlides(o,say){
     if(title){s.items.push(DR(0,0,13.333,0.95,NV),DT(0.6,0.1,10.6,0.75,title,26,1,'#ffffff','left','middle'),DR(11.55,0.15,1.18,0.65,'#ffffff',0.08),DI(11.7,0.225,0.88,0.5,logo),DT(0.6,7.08,9,0.3,N,10,0,'#64748b','left','middle'))}
     return s;
   };
-  const rowItems=(s,rows,x,w,y0,rh)=>rows.forEach((r,i)=>{const y=y0+i*rh;s.items.push(DR(x,y+0.05,0.38,0.38,NV,0.19),DT(x,y+0.05,0.38,0.38,r.n,11,1,'#ffffff','center','middle'),DT(x+0.5,y,w-0.5,0.26,cutT(r.name,Math.floor((w-0.5)/0.09)),12,1,NV,'left','top'),DT(x+0.5,y+0.25,w-0.5,rh>0.6?0.4:0.25,cutT(r.sub,Math.floor((w-0.5)/0.078)*(w<6?2:1)),10,0,'#64748b','left','top'))});
+  const rowItems=(s,rows,x,w,y0,rh)=>rows.forEach((r,i)=>{const y=y0+i*rh;s.items.push(DR(x,y+0.05,0.38,0.38,r.bg||NV,0.19),DT(x,y+0.05,0.38,0.38,r.n,11,1,'#ffffff','center','middle'),DT(x+0.5,y,w-0.5,0.26,cutT(r.name,Math.floor((w-0.5)/0.09)),12,1,NV,'left','top'),DT(x+0.5,y+0.25,w-0.5,rh>0.6?0.4:0.25,cutT(r.sub,Math.floor((w-0.5)/0.078)*(w<6?2:1)),10,0,'#64748b','left','top'))});
   const cards=(s,items)=>items.forEach((it,i)=>{
     const x=0.5+(i%2)*6.2,y=1.2+Math.floor(i/2)*2.95;
     s.items.push(DR(x,y,6.0,2.8,'#ffffff',0.06,'#dbe2ea'),DI(x+0.12,y+0.12,2.9,2.56,it.img),DR(x+3.2,y+0.14,0.62,0.4,it.bg,0.06),DT(x+3.2,y+0.14,0.62,0.4,it.badge,13,1,'#ffffff','center','middle'),DT(x+3.9,y+0.08,2.0,0.55,it.title,13,1,NV,'left','middle'));
@@ -705,40 +721,50 @@ async function buildSlides(o,say){
     g.items.push(DR(x,y,2.05,2.5,'#f1f5f9',0.08),DT(x,y+0.35,2.05,1.0,t[0],44,1,NV,'center','middle'),DT(x+0.1,y+1.5,1.85,0.8,t[1],13,0,'#475569','center','top'));
   });
 
-  // detail rute
+  // gambaran peta satu layer, lalu detail per item
+  const ovw=(title,img,rows,nf,rh)=>{
+    const sx=mk(title);sx.items.push(DI(0.5,1.2,8.0,5.5,img));
+    rowItems(sx,rows.slice(0,nf),8.8,3.9,1.2,rh);
+    const rest=rows.slice(nf);
+    for(let i=0;i<rest.length;i+=11)rowItems(mk(title+' (lanjutan)'),rest.slice(i,i+11),0.6,12.1,1.2,0.5);
+  };
+  const OA=8.0/5.5;
   if(o.rute&&stops.length>1){
     say('Memotret peta rute...');
-    const img=await shot(allBounds(),8.0/5.5,17),rows=routeRows();
-    const rs=mk('Detail rute');rs.items.push(DI(0.5,1.2,8.0,5.5,img));
-    rowItems(rs,rows.slice(0,8),8.8,3.9,1.2,0.7);
-    const rest=rows.slice(8);
-    for(let i=0;i<rest.length;i+=11)rowItems(mk('Detail rute (lanjutan)'),rest.slice(i,i+11),0.6,12.1,1.2,0.5);
+    const bd=L.latLngBounds([].concat(...legsArr()).map(q=>[q[0],q[1]]));
+    ovw('Detail rute',await shot(bd,OA,17,['rute']),routeRows(),8,0.7);
   }
-  // detail pos
   if(o.pos&&S.pos.length){
+    say('Memotret peta seluruh pos...');
+    const bd=L.latLngBounds(S.pos.map(p=>[p.lat,p.lng]));
+    ovw('Peta pos jaga',await shot(bd,OA,17,['pos']),S.pos.map((p,i)=>({n:'P'+(i+1),name:p.name,sub:cutT(p.personil,20)+', '+cutT(p.jam,20)})),9,0.6);
     const items=[];
     for(let i=0;i<S.pos.length;i++){
       const p=S.pos[i];say(`Memotret pos P${i+1} dari ${S.pos.length}...`);
-      items.push({img:await shot([p.lat,p.lng],asp,18),bg:NV,badge:'P'+(i+1),title:cutT(p.name,36),rows:[['Petugas',cutT(p.personil,40)||'-'],['Waktu',cutT(p.jam,40)||'-'],['Tugas',cutT(p.tugas,56)||'-']]});
+      items.push({img:await shot([p.lat,p.lng],asp,18,['pos']),bg:NV,badge:'P'+(i+1),title:cutT(p.name,36),rows:[['Petugas',cutT(p.personil,40)||'-'],['Waktu',cutT(p.jam,40)||'-'],['Tugas',cutT(p.tugas,56)||'-']]});
     }
     chunk(items,4).forEach((c,j,a)=>cards(mk(ttl('Detail pos jaga',j,a)),c));
   }
-  // detail parkir
   if(o.park&&S.park.length){
+    say('Memotret peta seluruh parkir...');
+    const bd=L.latLngBounds([].concat(...S.park.map(k=>k.pts)));
+    ovw('Peta parkir',await shot(bd,OA,18,['park']),S.park.map((a,i)=>({n:i+1,bg:'#1c7ed6',name:a.name,sub:(a.kapasitas?cutT(a.kapasitas,22)+', ':'')+'\u00b1'+Math.round(areaM(a.pts)).toLocaleString('id-ID')+' m\u00b2'})),9,0.6);
     const items=[];
     for(let i=0;i<S.park.length;i++){
       const a=S.park[i];say(`Memotret parkir ${i+1} dari ${S.park.length}...`);
-      items.push({img:await shot(L.latLngBounds(a.pts),asp,19),bg:'#1c7ed6',badge:'Pk',title:cutT(a.name,36),rows:[['Kapasitas',cutT(a.kapasitas,40)||'-'],['Luas','\u00b1'+Math.round(areaM(a.pts)).toLocaleString('id-ID')+' m\u00b2'],['Bentuk lahan',a.pts.length+' titik sudut']]});
+      items.push({img:await shot(L.latLngBounds(a.pts),asp,19,['park']),bg:'#1c7ed6',badge:'Pk',title:cutT(a.name,36),rows:[['Kapasitas',cutT(a.kapasitas,40)||'-'],['Luas','\u00b1'+Math.round(areaM(a.pts)).toLocaleString('id-ID')+' m\u00b2'],['Bentuk lahan',a.pts.length+' titik sudut']]});
     }
     chunk(items,4).forEach((c,j,a)=>cards(mk(ttl('Detail parkir',j,a)),c));
   }
-  // detail pengalihan + rambu
   if(o.alt&&(S.alt.length||S.sign.length)){
+    say('Memotret peta seluruh pengalihan...');
+    const all=[].concat(...S.alt.map(k=>k.pts.map(p=>[p.lat,p.lng])),S.sign.map(g=>[g.lat,g.lng]));
+    ovw('Peta pengalihan dan rambu',await shot(L.latLngBounds(all),OA,18,['alt']),S.alt.map((a,i)=>({n:i+1,bg:a.color||'#7c3aed',name:'Pengalihan '+(i+1),sub:cutT(a.from,18)+' > '+cutT(a.to,18)})),9,0.6);
     const items=[];
     for(let i=0;i<S.alt.length;i++){
       const a=S.alt[i];say(`Memotret pengalihan ${i+1} dari ${S.alt.length}...`);
       const ll=a.pts.map(p=>[p.lat,p.lng]);
-      const img=ll.length>1?await shot(L.latLngBounds(ll),asp,18):ll.length?await shot(ll[0],asp,18):await shot(allBounds()||L.latLngBounds([[0,0]]),asp,16);
+      const img=ll.length>1?await shot(L.latLngBounds(ll),asp,18,['alt']):ll.length?await shot(ll[0],asp,18,['alt']):await shot(L.latLngBounds(all),asp,16,['alt']);
       items.push({img,bg:a.color||'#7c3aed',badge:String(i+1),title:'Pengalihan '+(i+1),rows:[['Dari',cutT(a.from,40)||'-'],['Ke',cutT(a.to,40)||'-'],['Jarak',AR[a.id]?(AR[a.id].dist/1000).toFixed(2)+' km':'-']]});
     }
     chunk(items,4).forEach((c,j,a)=>cards(mk(ttl('Detail pengalihan',j,a)),c));
