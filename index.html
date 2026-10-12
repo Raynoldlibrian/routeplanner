@@ -67,11 +67,13 @@ button.dg{color:#b42318}
 .leaflet-tooltip.tt2{background:none;border:0;box-shadow:none;padding:0}
 .leaflet-tooltip.tt2:before{display:none}
 .tt2 span{display:block;color:#fff;padding:2px 9px;border-radius:999px;font-weight:600;font-size:12px;white-space:nowrap;border:2px solid #fff;box-shadow:0 1px 4px #0006}
-#mdl{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:9998}
-#mdl.on{display:flex}
-#mdl .bx{background:#fff;border-radius:12px;padding:16px;width:min(380px,92vw);display:grid;gap:10px}
-#mdl label{display:flex;gap:8px;align-items:center}
-#mdl input[type=checkbox]{width:auto}
+#mdl,#dlg{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:9998}
+#mdl.on,#dlg.on{display:flex}
+#mdl .bx,#dlg .bx{background:#fff;border-radius:12px;padding:16px;width:min(380px,92vw);display:grid;gap:10px}
+#mdl label,#dlg label{display:flex;gap:8px;align-items:center}
+#mdl input[type=checkbox],#dlg input[type=checkbox]{width:auto}
+#dlg .bx{width:min(520px,94vw);max-height:92vh;overflow:auto}
+#dlg textarea{width:100%;border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit;resize:vertical}
 #sim{position:fixed;inset:0;z-index:9990;background:#0b1220;display:none}
 #sim.on{display:block}
 #sm{position:absolute;inset:0}
@@ -129,6 +131,18 @@ button.dg{color:#b42318}
     <select id="ssy"><option value="3d">Peta 3D</option><option value="sat">Satelit</option></select>
     <input type="time" id="sti" value="07:00" title="Jam berangkat"></div>
 </div>
+<div id="dlg"><div class="bx">
+  <b style="font-size:16px">Buat dokumen presentasi</b>
+  <div class="mut">Isi dokumen: gambaran umum, detail rute, pos, parkir, dan pengalihan, lengkap dengan gambar peta. Peta bergerak sendiri ke tiap lokasi untuk memotret, jadi jangan tutup halaman sampai selesai.</div>
+  <label style="display:grid;gap:4px">Tanggal pelaksanaan<input id="dg_tgl" placeholder="Contoh: Sabtu, 18 Oktober 2026"></label>
+  <label style="display:grid;gap:4px">Latar belakang kegiatan<textarea id="dg_lat" rows="4" placeholder="Tuliskan latar belakang singkat kegiatan..."></textarea></label>
+  <div class="mut">Format file:</div>
+  <div class="row" style="gap:14px"><label><input type="checkbox" id="dg_pptx" checked> PPTX</label><label><input type="checkbox" id="dg_pdf" checked> PDF</label></div>
+  <div class="mut">Bagian detail yang disertakan:</div>
+  <div class="row" style="gap:14px;flex-wrap:wrap"><label><input type="checkbox" id="dg_rute" checked> Rute</label><label><input type="checkbox" id="dg_pos" checked> Pos</label><label><input type="checkbox" id="dg_park" checked> Parkir</label><label><input type="checkbox" id="dg_alt" checked> Pengalihan</label></div>
+  <div id="dp" class="mut"></div>
+  <div class="row"><button class="pr" data-da="go" style="flex:1">Buat dokumen</button><button data-da="x">Tutup</button></div>
+</div></div>
 <div id="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script>
@@ -137,7 +151,7 @@ const esc=t=>String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 function load(){try{return JSON.parse(localStorage.getItem('rp1'))}catch(e){return null}}
 function save(){try{localStorage.setItem('rp1',JSON.stringify(S))}catch(e){}}
 let S=load()||{event:'Event baru',prof:'foot',speed:3,color:'#e8590c',pts:[],pos:[],park:[],nid:1,view:[-0.3749,102.5456,15]};
-S.show=S.show||{rute:1,pos:1,park:1,alt:1};if(S.show.alt==null)S.show.alt=1;S.alt=S.alt||[];S.sign=S.sign||[];
+S.show=S.show||{rute:1,pos:1,park:1,alt:1};if(S.show.alt==null)S.show.alt=1;S.alt=S.alt||[];S.sign=S.sign||[];S.doc=S.doc||{tgl:'',latar:''};
 let tab='rute',arm=null,armSign=null,sel=null,dAlt=null,R={dist:0,names:[],legs:[],err:''},rid=0,tt;
 
 const map=L.map('map').setView([S.view[0],S.view[1]],S.view[2]);
@@ -522,13 +536,13 @@ $('#ssy').addEventListener('change',e=>{if(!SM)return;SM.setStyle(STY[e.target.v
 
 /* ---------- cetak gambar ---------- */
 const LBL={rute:'Rute',pos:'Pos jaga',park:'Parkir',alt:'Pengalihan'};
-function snap(keys){
-  const el=map.getContainer(),W=el.clientWidth,H=el.clientHeight,K=2,HD=60;
+function snap(keys,o){
+  const el=map.getContainer(),W=el.clientWidth,H=el.clientHeight,K=2,HD=(o&&o.clean)?0:60;
   const cv=document.createElement('canvas');cv.width=W*K;cv.height=(H+HD)*K;
   const c=cv.getContext('2d');c.scale(K,K);c.fillStyle='#fff';c.fillRect(0,0,W,H+HD);
   c.save();c.translate(0,HD);c.beginPath();c.rect(0,0,W,H);c.clip();
   const r0=el.getBoundingClientRect();
-  el.querySelectorAll('img.leaflet-tile-loaded').forEach(im=>{const r=im.getBoundingClientRect();c.drawImage(im,r.left-r0.left,r.top-r0.top,r.width,r.height)});
+  [...el.querySelectorAll('img.leaflet-tile-loaded')].sort((p,q)=>(+getComputedStyle(p.parentNode).zIndex||0)-(+getComputedStyle(q.parentNode).zIndex||0)).forEach(im=>{const r=im.getBoundingClientRect();c.drawImage(im,r.left-r0.left,r.top-r0.top,r.width,r.height)});
   const P=ll=>{const q=map.latLngToContainerPoint(ll);return[q.x,q.y]};
   const F='600 12px system-ui,sans-serif';
   const rr=(x,y,w,h,r)=>{c.beginPath();c.roundRect?c.roundRect(x,y,w,h,r):c.rect(x,y,w,h)};
@@ -571,17 +585,17 @@ function snap(keys){
     tx('P'+(i+1),q[0],q[1],'700 12px system-ui,sans-serif','#fff');
     lg.push([cut('P'+(i+1)+' '+p.name+(p.personil?' ('+p.personil+')':''),48)])})}
   const rows=lg.filter(l=>l[0]!=='Parkir'&&l[0]!=='Pengalihan'&&l[0]!=='Pos jaga'&&!/^Rute:/.test(l[0])||true).slice(0,16);
-  if(rows.length){
+  if(rows.length&&!(o&&o.clean)){
     c.font='12px system-ui,sans-serif';const w=Math.max(...rows.map(l=>c.measureText(l[0]).width))+20,h=rows.length*17+12,y0=H-h-26;
     rr(10,y0,w,h,8);c.fillStyle='rgba(255,255,255,.92)';c.fill();c.strokeStyle='#dbe2ea';c.lineWidth=1;c.stroke();
     rows.forEach((l,i)=>tx(l[0],20,y0+14+i*17,(l[1]?'700 ':'')+'12px system-ui,sans-serif','#14263b','left'));
   }
   const bk=Object.keys(base).find(k=>map.hasLayer(base[k]));
-  tx(bk==='Satelit'?'Tiles \u00a9 Esri':'\u00a9 OpenStreetMap contributors',W-8,H-9,'11px system-ui,sans-serif','#334155','right',1);
+  if(!(o&&o.clean))tx(bk==='Satelit'?'Tiles \u00a9 Esri':'\u00a9 OpenStreetMap contributors',W-8,H-9,'11px system-ui,sans-serif','#334155','right',1);
   c.restore();
-  c.fillStyle='#14263b';c.fillRect(0,0,W,HD);
+  if(HD){c.fillStyle='#14263b';c.fillRect(0,0,W,HD);
   tx(S.event||'Event',16,22,'700 20px system-ui,sans-serif','#fff','left');
-  tx(keys.map(k=>LBL[k]).join(' + ')+'  |  '+new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}),16,45,'13px system-ui,sans-serif','#cbd5e1','left');
+  tx(keys.map(k=>LBL[k]).join(' + ')+'  |  '+new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}),16,45,'13px system-ui,sans-serif','#cbd5e1','left');}
   return cv;
 }
 async function save1(keys,fm,name){
@@ -601,6 +615,200 @@ $('#mdl').addEventListener('click',async e=>{
     else for(const k of ks)await save1([k],fm,k);
     toast('Gambar diunduh');
   }catch(x){toast('Gagal membuat gambar. Coba ganti layer peta ke OpenStreetMap.')}
+});
+
+/* ---------- dokumen presentasi (PPTX / PDF) ---------- */
+const attrTxt=()=>Object.keys(base).find(k=>map.hasLayer(base[k]))==='Satelit'?'Tiles \u00a9 Esri':'\u00a9 OpenStreetMap contributors';
+const tilesReady=()=>new Promise(r=>{
+  const t0=Date.now();
+  (function chk(){
+    const im=[...map.getContainer().querySelectorAll('img.leaflet-tile')];
+    if((im.length&&im.every(i=>i.classList.contains('leaflet-tile-loaded')))||Date.now()-t0>9000)setTimeout(r,450);
+    else setTimeout(chk,120);
+  })();
+});
+async function shot(target,asp,maxZ){
+  const el=map.getContainer(),W=el.clientWidth,H=el.clientHeight,K=2;
+  const cw=Math.floor(Math.min(W*.98,H*.98*asp)),ch=Math.floor(cw/asp);
+  if(Array.isArray(target))map.setView(target,maxZ,{animate:false});
+  else{const z=Math.min(maxZ||18,map.getBoundsZoom(target,false,L.point(W-cw+70,H-ch+70)));map.setView(target.getCenter(),z,{animate:false})}
+  await tilesReady();
+  const cv=snap(['rute','pos','park','alt'],{clean:true}),o=document.createElement('canvas');
+  o.width=cw*K;o.height=ch*K;
+  const c=o.getContext('2d');
+  c.drawImage(cv,Math.floor((W-cw)/2)*K,Math.floor((H-ch)/2)*K,cw*K,ch*K,0,0,cw*K,ch*K);
+  c.font=(11*K)+'px system-ui,sans-serif';c.textAlign='right';c.textBaseline='bottom';c.lineWidth=4*K;c.strokeStyle='#fff';c.lineJoin='round';
+  c.strokeText(attrTxt(),o.width-8*K,o.height-6*K);c.fillStyle='#334155';c.fillText(attrTxt(),o.width-8*K,o.height-6*K);
+  return o.toDataURL('image/jpeg',.85);
+}
+function allBounds(){
+  const a=[];
+  S.pts.forEach(p=>a.push([p.lat,p.lng]));S.pos.forEach(p=>a.push([p.lat,p.lng]));S.sign.forEach(g=>a.push([g.lat,g.lng]));
+  S.park.forEach(k=>k.pts.forEach(q=>a.push(q)));S.alt.forEach(k=>k.pts.forEach(p=>a.push([p.lat,p.lng])));
+  return a.length?L.latLngBounds(a):null;
+}
+const DR=(x,y,w,h,fill,rad,line)=>({k:'r',x,y,w,h,fill,rad,line});
+const DT=(x,y,w,h,text,size,bold,color,align,valign)=>({k:'t',x,y,w,h,text:String(text==null?'':text),size,bold,color,align,valign});
+const DI=(x,y,w,h,data)=>({k:'i',x,y,w,h,data});
+const cutT=(t,n)=>{t=String(t||'');return t.length>n?t.slice(0,n-3)+'...':t};
+const chunk=(a,n)=>{const r=[];for(let i=0;i<a.length;i+=n)r.push(a.slice(i,i+n));return r};
+const signPng=t=>{const c=document.createElement('canvas');c.width=c.height=96;c.getContext('2d').drawImage(sImg(t),0,0,96,96);return c.toDataURL('image/png')};
+function routeRows(){
+  const st=[];S.pts.forEach((p,i)=>{if(!p.via)st.push(i)});
+  return st.map((pi,k)=>{
+    let sub='';
+    if(k<st.length-1){
+      let d=0,n=[];
+      for(let i=st[k];i<st[k+1];i++){
+        const l=(R.info||[])[i];
+        if(l){d+=l.d;l.n.forEach(x=>{if(n[n.length-1]!==x)n.push(x)})}
+        else d+=map.distance([S.pts[i].lat,S.pts[i].lng],[S.pts[i+1].lat,S.pts[i+1].lng]);
+      }
+      const rd=n.length?n:(S.pts[pi].road?[S.pts[pi].road]:[]);
+      sub=(rd.length?rd.join(' > '):'jalan tanpa nama')+' ('+(d>=1000?(d/1000).toFixed(2)+' km':Math.round(d)+' m')+')';
+    }
+    return{n:k+1,name:S.pts[pi].name||'Titik '+(k+1),sub};
+  });
+}
+async function buildSlides(o,say){
+  const NV='#14263b',N=S.event||'Event',logo=$('.hero img').src,sl=[];
+  const mk=title=>{
+    const s={items:[]};sl.push(s);
+    if(title){s.items.push(DR(0,0,13.333,0.95,NV),DT(0.6,0.1,10.6,0.75,title,26,1,'#ffffff','left','middle'),DR(11.55,0.15,1.18,0.65,'#ffffff',0.08),DI(11.7,0.225,0.88,0.5,logo),DT(0.6,7.08,9,0.3,N,10,0,'#64748b','left','middle'))}
+    return s;
+  };
+  const rowItems=(s,rows,x,w,y0,rh)=>rows.forEach((r,i)=>{const y=y0+i*rh;s.items.push(DR(x,y+0.05,0.38,0.38,NV,0.19),DT(x,y+0.05,0.38,0.38,r.n,11,1,'#ffffff','center','middle'),DT(x+0.5,y,w-0.5,0.26,cutT(r.name,46),12,1,NV,'left','top'),DT(x+0.5,y+0.25,w-0.5,0.25,cutT(r.sub,70),10,0,'#64748b','left','top'))});
+  const cards=(s,items)=>items.forEach((it,i)=>{
+    const x=0.5+(i%2)*6.2,y=1.2+Math.floor(i/2)*2.95;
+    s.items.push(DR(x,y,6.0,2.8,'#ffffff',0.06,'#dbe2ea'),DI(x+0.12,y+0.12,2.9,2.56,it.img),DR(x+3.2,y+0.14,0.62,0.4,it.bg,0.06),DT(x+3.2,y+0.14,0.62,0.4,it.badge,13,1,'#ffffff','center','middle'),DT(x+3.9,y+0.08,2.0,0.55,it.title,13,1,NV,'left','middle'));
+    it.rows.forEach((r,j)=>s.items.push(DT(x+3.2,y+0.72+j*0.68,2.7,0.25,r[0],10,0,'#64748b','left','top'),DT(x+3.2,y+0.95+j*0.68,2.7,0.42,r[1],12,1,NV,'left','top')));
+  });
+  const ttl=(t,j,a)=>t+(a.length>1?` (${j+1}/${a.length})`:'');
+  const asp=2.9/2.56;
+
+  // sampul
+  const cv=mk();cv.bg=NV;
+  cv.items.push(DR(0.8,0.7,2.5,1.4,'#ffffff',0.1),DI(0.95,0.78,2.2,1.25,logo),
+    DT(3.6,0.85,9,0.7,'Dinas Perhubungan',30,1,'#ffffff','left','middle'),DT(3.6,1.5,9,0.5,'Kabupaten Indragiri Hulu',18,0,'#cbd5e1','left','middle'),
+    DT(0.8,3.0,11.7,1.9,N,N.length>45?32:46,1,'#ffffff','left','top'),DT(0.8,5.05,11.7,0.6,'Usulan Rekayasa Lalu Lintas',24,0,'#fbbf24','left','top'),DT(0.8,5.75,11.7,0.5,S.doc.tgl||'',20,0,'#ffffff','left','top'));
+
+  // gambaran umum
+  const stops=S.pts.filter(p=>!p.via),nameOf=(p,i)=>p.name||('Titik '+(i+1));
+  const mins=Math.round(R.dist/1000/(S.speed||3)*60);
+  const rute=stops.length>1?`Dari ${nameOf(stops[0],0)} menuju ${nameOf(stops[stops.length-1],stops.length-1)}, sepanjang ${(R.dist/1000).toFixed(2)} km dengan estimasi ${mins} menit pada kecepatan ${S.speed} km/jam`+((R.names||[]).length?`, melalui ${R.names.slice(0,4).join(', ')}.`:'.'):'Rute belum dibuat.';
+  const g=mk('Gambaran umum');
+  g.items.push(DT(0.6,1.2,7.4,0.3,'Latar belakang',12,1,'#64748b'),DT(0.6,1.5,7.4,2.3,cutT(S.doc.latar||'-',620),15,0,NV),
+    DT(0.6,3.9,7.4,0.3,'Tanggal pelaksanaan',12,1,'#64748b'),DT(0.6,4.2,7.4,0.5,S.doc.tgl||'-',15,1,NV),
+    DT(0.6,4.9,7.4,0.3,'Rencana rute',12,1,'#64748b'),DT(0.6,5.2,7.4,1.7,cutT(rute,330),15,0,NV));
+  [[stops.length,'Titik rute'],[S.pos.length,'Pos jaga'],[S.park.length,'Titik parkir'],[S.alt.length,'Pengalihan'+(S.sign.length?' dan '+S.sign.length+' rambu':'')]].forEach((t,i)=>{
+    const x=8.5+(i%2)*2.2,y=1.3+Math.floor(i/2)*2.7;
+    g.items.push(DR(x,y,2.05,2.5,'#f1f5f9',0.08),DT(x,y+0.35,2.05,1.0,t[0],44,1,NV,'center','middle'),DT(x+0.1,y+1.5,1.85,0.8,t[1],13,0,'#475569','center','top'));
+  });
+
+  // detail rute
+  if(o.rute&&stops.length>1){
+    say('Memotret peta rute...');
+    const img=await shot(allBounds(),8.0/5.5,17),rows=routeRows();
+    const rs=mk('Detail rute');rs.items.push(DI(0.5,1.2,8.0,5.5,img));
+    rowItems(rs,rows.slice(0,9),8.8,3.9,1.2,0.55);
+    const rest=rows.slice(9);
+    for(let i=0;i<rest.length;i+=11)rowItems(mk('Detail rute (lanjutan)'),rest.slice(i,i+11),0.6,12.1,1.2,0.5);
+  }
+  // detail pos
+  if(o.pos&&S.pos.length){
+    const items=[];
+    for(let i=0;i<S.pos.length;i++){
+      const p=S.pos[i];say(`Memotret pos P${i+1} dari ${S.pos.length}...`);
+      items.push({img:await shot([p.lat,p.lng],asp,18),bg:NV,badge:'P'+(i+1),title:cutT(p.name,36),rows:[['Petugas',cutT(p.personil,40)||'-'],['Waktu',cutT(p.jam,40)||'-'],['Tugas',cutT(p.tugas,56)||'-']]});
+    }
+    chunk(items,4).forEach((c,j,a)=>cards(mk(ttl('Detail pos jaga',j,a)),c));
+  }
+  // detail parkir
+  if(o.park&&S.park.length){
+    const items=[];
+    for(let i=0;i<S.park.length;i++){
+      const a=S.park[i];say(`Memotret parkir ${i+1} dari ${S.park.length}...`);
+      items.push({img:await shot(L.latLngBounds(a.pts),asp,19),bg:'#1c7ed6',badge:'Pk',title:cutT(a.name,36),rows:[['Kapasitas',cutT(a.kapasitas,40)||'-'],['Luas',' \u00b1'+Math.round(areaM(a.pts)).toLocaleString('id-ID')+' m\u00b2'],['Bentuk lahan',a.pts.length+' titik sudut']]});
+    }
+    chunk(items,4).forEach((c,j,a)=>cards(mk(ttl('Detail parkir',j,a)),c));
+  }
+  // detail pengalihan + rambu
+  if(o.alt&&S.alt.length){
+    const items=[];
+    for(let i=0;i<S.alt.length;i++){
+      const a=S.alt[i];say(`Memotret pengalihan ${i+1} dari ${S.alt.length}...`);
+      const ll=a.pts.map(p=>[p.lat,p.lng]);
+      const img=ll.length>1?await shot(L.latLngBounds(ll),asp,18):ll.length?await shot(ll[0],asp,18):await shot(allBounds()||L.latLngBounds([[0,0]]),asp,16);
+      items.push({img,bg:a.color||'#7c3aed',badge:String(i+1),title:'Pengalihan '+(i+1),rows:[['Dari',cutT(a.from,40)||'-'],['Ke',cutT(a.to,40)||'-'],['Jarak',AR[a.id]?(AR[a.id].dist/1000).toFixed(2)+' km':'-']]});
+    }
+    chunk(items,4).forEach((c,j,a)=>cards(mk(ttl('Detail pengalihan',j,a)),c));
+    chunk(S.sign,8).forEach((c,j,a)=>{
+      const s2=mk(ttl('Rambu pengalihan',j,a));
+      c.forEach((gg,i)=>{const y=1.2+i*0.72;s2.items.push(DR(0.6,y,12.1,0.64,'#f8fafc',0.05,'#e2e8f0'),DI(0.75,y+0.04,0.56,0.56,signPng(gg.type)),DT(1.5,y,4.5,0.64,SGN[gg.type],14,1,NV,'left','middle'),DT(6.2,y,6.4,0.64,cutT(gg.note,90)||'-',12,0,'#475569','left','middle'))});
+    });
+  }
+  sl.forEach((s,i)=>{if(i)s.items.push(DT(12.1,7.08,0.7,0.3,String(i+1),10,0,'#64748b','right','middle'))});
+  return sl;
+}
+const loadJs=(u,t)=>new Promise((ok,no)=>{if(window[t])return ok();const j=document.createElement('script');j.src=u;j.onload=ok;j.onerror=no;document.head.appendChild(j)});
+const loadDoc=(a,b)=>Promise.all([a?loadJs('https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js','PptxGenJS'):0,b?loadJs('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js','jspdf'):0]);
+const hx=c=>[0,2,4].map(i=>parseInt(c.replace('#','').substr(i,2),16));
+function makePptx(sl,name){
+  const p=new PptxGenJS();p.layout='LAYOUT_WIDE';
+  sl.forEach(s=>{
+    const d=p.addSlide();if(s.bg)d.background={color:s.bg.replace('#','')};
+    s.items.forEach(it=>{
+      if(it.k==='r')d.addShape(it.rad?p.ShapeType.roundRect:p.ShapeType.rect,{x:it.x,y:it.y,w:it.w,h:it.h,fill:{color:it.fill.replace('#','')},line:it.line?{color:it.line.replace('#',''),width:1}:{type:'none'},rectRadius:it.rad||0});
+      else if(it.k==='t')d.addText(it.text,{x:it.x,y:it.y,w:it.w,h:it.h,fontSize:it.size,bold:!!it.bold,color:(it.color||'#14263b').replace('#',''),align:it.align||'left',valign:it.valign||'top',fontFace:'Arial',margin:0,fit:'shrink'});
+      else d.addImage({data:it.data.replace(/^data:/,''),x:it.x,y:it.y,w:it.w,h:it.h});
+    });
+  });
+  return p.writeFile({fileName:name+'.pptx'});
+}
+function makePdf(sl,name){
+  const d=new window.jspdf.jsPDF({orientation:'landscape',unit:'in',format:[13.333,7.5]});
+  sl.forEach((s,i)=>{
+    if(i)d.addPage([13.333,7.5],'landscape');
+    if(s.bg){d.setFillColor(...hx(s.bg));d.rect(0,0,13.333,7.5,'F')}
+    s.items.forEach(it=>{
+      if(it.k==='r'){
+        d.setFillColor(...hx(it.fill));
+        if(it.line)d.setDrawColor(...hx(it.line));
+        const st=it.line?'FD':'F';
+        if(it.rad)d.roundedRect(it.x,it.y,it.w,it.h,it.rad,it.rad,st);else d.rect(it.x,it.y,it.w,it.h,st);
+      }else if(it.k==='t'){
+        d.setFont('helvetica',it.bold?'bold':'normal');d.setFontSize(it.size);d.setTextColor(...hx(it.color||'#14263b'));
+        const ls=d.splitTextToSize(it.text.replace(/[\u2018\u2019\u02bc]/g,"'").replace(/[\u201c\u201d]/g,'"').replace(/[\u2013\u2014]/g,'-').replace(/\u2192/g,'>').replace(/\u2026/g,'...').replace(/[^\x00-\xff]/g,'?'),it.w),lh=it.size/72*1.2,th=ls.length*lh;
+        const y0=it.valign==='middle'?it.y+(it.h-th)/2:it.y,al=it.align||'left',xx=al==='center'?it.x+it.w/2:al==='right'?it.x+it.w:it.x;
+        ls.forEach((l,j)=>d.text(l,xx,y0+j*lh,{baseline:'top',align:al}));
+      }else d.addImage(it.data,/^data:image\/png/.test(it.data)?'PNG':'JPEG',it.x,it.y,it.w,it.h,undefined,'FAST');
+    });
+  });
+  d.save(name+'.pdf');
+}
+function openDoc(){$('#dg_tgl').value=S.doc.tgl||'';$('#dg_lat').value=S.doc.latar||'';$('#dp').textContent='';$('#dlg').classList.add('on')}
+$('#dg_tgl').addEventListener('input',e=>{S.doc.tgl=e.target.value;save()});
+$('#dg_lat').addEventListener('input',e=>{S.doc.latar=e.target.value;save()});
+let busy=false;
+$('#dlg').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-da]');
+  if(e.target.id==='dlg'||(b&&b.dataset.da==='x')){if(!busy)$('#dlg').classList.remove('on');return}
+  if(!b||busy)return;
+  const o={pptx:$('#dg_pptx').checked,pdf:$('#dg_pdf').checked,rute:$('#dg_rute').checked,pos:$('#dg_pos').checked,park:$('#dg_park').checked,alt:$('#dg_alt').checked};
+  if(!o.pptx&&!o.pdf){toast('Pilih PPTX atau PDF');return}
+  if(S.pts.length<2&&!S.pos.length&&!S.park.length&&!S.alt.length){toast('Belum ada data untuk dibuat dokumen');return}
+  busy=true;
+  const c0=map.getCenter(),z0=map.getZoom(),say=m=>{$('#dp').textContent=m};
+  try{
+    say('Memuat pustaka dokumen...');await loadDoc(o.pptx,o.pdf);
+    const sl=await buildSlides(o,say);
+    say('Menyusun file...');
+    const nm=(S.event||'usulan').replace(/\W+/g,'-')+'-usulan';
+    if(o.pptx)await makePptx(sl,nm);
+    if(o.pdf)makePdf(sl,nm);
+    say('Selesai: '+sl.length+' slide.');toast('Dokumen selesai dibuat');
+  }catch(x){console.error(x);say('Gagal membuat dokumen. Periksa koneksi internet lalu coba lagi.')}
+  finally{busy=false;map.setView(c0,z0,{animate:false})}
 });
 
 /* ---------- sidebar ---------- */
@@ -640,7 +848,7 @@ function ui(){
     <input data-t="park" data-id="${a.id}" data-f="kapasitas" value="${esc(a.kapasitas)}" placeholder="Kapasitas, misal 40 bus / 120 motor">
     <div class="row"><button data-a="edit" data-id="${a.id}">${sel===a.id?'Selesai edit':'Edit bentuk'}</button><button class="dg" data-a="del" data-t="park" data-id="${a.id}">Hapus</button></div></div>`);
   }
-  h+=`<div class="row" style="margin-top:6px"><button data-a="sim" class="pr" style="flex:1">Simulasi 3D</button><button data-a="prt" style="flex:1">Cetak gambar</button></div><div class="row"><button data-a="exp" style="flex:1">Simpan JSON</button><button data-a="imp" style="flex:1">Buka JSON</button></div><input id="fi" type="file" accept=".json" hidden>`;
+  h+=`<div class="row" style="margin-top:6px"><button data-a="doc" class="pr" style="flex:1">Buat dokumen (PPTX / PDF)</button></div><div class="row"><button data-a="sim" class="pr" style="flex:1">Simulasi 3D</button><button data-a="prt" style="flex:1">Cetak gambar</button></div><div class="row"><button data-a="exp" style="flex:1">Simpan JSON</button><button data-a="imp" style="flex:1">Buka JSON</button></div><input id="fi" type="file" accept=".json" hidden>`;
   $('#sc').innerHTML=h;stats();
 }
 const A=document.querySelector('aside');
@@ -667,6 +875,7 @@ A.addEventListener('click',e=>{
   else if(a==='cari')cari();
   else if(a==='exp'){const u=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'})),l=document.createElement('a');l.href=u;l.download=(S.event||'rute').replace(/\W+/g,'-')+'.json';l.click();URL.revokeObjectURL(u)}
   else if(a==='prt')openPrint();
+  else if(a==='doc')openDoc();
   else if(a==='sim')openSim();
   else if(a==='sgn'){arm=(arm==='sign'&&armSign===d.v)?null:'sign';armSign=d.v;cur();ui();if(arm)toast('Klik peta untuk menaruh rambu')}
   else if(a==='imp')$('#fi').click();
@@ -674,7 +883,7 @@ A.addEventListener('click',e=>{
 A.addEventListener('change',e=>{
   if(e.target.id!=='fi')return;
   const f=e.target.files[0];if(!f)return;
-  f.text().then(t=>{try{const j=JSON.parse(t);if(!Array.isArray(j.pts)||!Array.isArray(j.pos)||!Array.isArray(j.park))throw 0;S=Object.assign(S,j);S.alt=j.alt||[];S.sign=j.sign||[];S.show=Object.assign({rute:1,pos:1,park:1,alt:1},j.show);sel=null;dAlt=null;commit();S.alt.forEach(routeAlt);map.setView([S.view[0],S.view[1]],S.view[2]);toast('Data dibuka')}catch(x){toast('File JSON tidak dikenali')}});
+  f.text().then(t=>{try{const j=JSON.parse(t);if(!Array.isArray(j.pts)||!Array.isArray(j.pos)||!Array.isArray(j.park))throw 0;S=Object.assign(S,j);S.alt=j.alt||[];S.sign=j.sign||[];S.doc=j.doc||{tgl:'',latar:''};S.show=Object.assign({rute:1,pos:1,park:1,alt:1},j.show);sel=null;dAlt=null;commit();S.alt.forEach(routeAlt);map.setView([S.view[0],S.view[1]],S.view[2]);toast('Data dibuka')}catch(x){toast('File JSON tidak dikenali')}});
 });
 async function cari(){
   const q=$('#q').value.trim();if(!q)return;
