@@ -32,8 +32,19 @@ main{display:grid;grid-template-rows:3fr 1fr;min-height:0;min-width:0}
 #info .ln{height:6px;width:100%;margin-top:13px;border-radius:3px}
 #info .lk b{font-size:12px;margin-top:2px}
 #info .ri{width:100%;margin-top:4px;font-size:12px;padding:3px 6px}
-#tg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+#tg{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+#tg button{padding:5px 4px;font-size:12px}
 #tg button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.g4 label{font-size:11px;color:var(--mut);display:grid;gap:2px}
+.g4 input{padding:4px 6px;font-size:12px;text-align:center}
+.rkp{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 10px;font-size:12px;display:grid;gap:4px}
+.rkp b{font-size:14px;color:var(--ink)}
+.pills{display:flex;flex-wrap:wrap;gap:4px}
+.pills span{background:#fff;border:1px solid #bfdbfe;border-radius:99px;padding:1px 8px;font-size:11px;font-weight:600}
+.pal6{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.fbtn{padding:6px;display:flex;align-items:center;gap:6px;font-size:12px;text-align:left}
+.fbtn.on{background:#dbeafe;border-color:#1c7ed6;font-weight:700}
 aside{display:flex;flex-direction:column;background:#fff;border-right:1px solid var(--line);min-height:0}
 #map{height:100%;min-height:0}
 .hd{padding:12px;border-bottom:1px solid var(--line);display:grid;gap:8px}
@@ -48,7 +59,7 @@ button.dg{color:#b42318}
 .ev{font-size:17px;font-weight:700;border:0;border-bottom:2px solid var(--line);border-radius:0;padding:4px 0}
 .row{display:flex;gap:6px}
 .g3{display:grid;grid-template-columns:1.4fr 1fr 44px;gap:6px}
-.tabs{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--line)}
 .tabs button{border:0;border-radius:0;padding:10px 2px;font-size:13px;border-bottom:3px solid transparent}
 .tabs button.on{border-color:var(--ink);font-weight:700}
 .st{background:var(--bg);border-radius:8px;padding:8px 10px}
@@ -130,7 +141,8 @@ button.dg{color:#b42318}
   <label><input type="checkbox" id="pk_rute"> Rute</label>
   <label><input type="checkbox" id="pk_pos"> Pos jaga</label>
   <label><input type="checkbox" id="pk_park"> Parkir</label>
-  <label><input type="checkbox" id="pk_alt"> Rute pengalihan</label>
+  <label><input type="checkbox" id="pk_alt"> Pengalihan, penutupan &amp; rambu</label>
+  <label><input type="checkbox" id="pk_fas"> Fasilitas darurat &amp; VIP</label>
   <select id="pf"><option value="png">PNG (tajam, ukuran lebih besar)</option><option value="jpg">JPG (lebih ringan)</option></select>
   <div class="row"><button class="pr" data-pa="all" style="flex:1">Unduh gabungan</button><button data-pa="each" style="flex:1">Unduh per layer</button></div>
   <button data-pa="x">Tutup</button>
@@ -154,7 +166,7 @@ button.dg{color:#b42318}
   <div class="mut">Format file:</div>
   <div class="row" style="gap:14px"><label><input type="checkbox" id="dg_pptx" checked> PPTX</label><label><input type="checkbox" id="dg_pdf" checked> PDF</label></div>
   <div class="mut">Bagian detail yang disertakan:</div>
-  <div class="row" style="gap:14px;flex-wrap:wrap"><label><input type="checkbox" id="dg_rute" checked> Rute</label><label><input type="checkbox" id="dg_pos" checked> Pos</label><label><input type="checkbox" id="dg_park" checked> Parkir</label><label><input type="checkbox" id="dg_alt" checked> Pengalihan</label></div>
+  <div class="row" style="gap:14px;flex-wrap:wrap"><label><input type="checkbox" id="dg_rute" checked> Rute</label><label><input type="checkbox" id="dg_pos" checked> Pos</label><label><input type="checkbox" id="dg_park" checked> Parkir</label><label><input type="checkbox" id="dg_alt" checked> Pengalihan &amp; Penutupan</label><label><input type="checkbox" id="dg_fas" checked> Darurat &amp; VIP</label></div>
   <div id="dp" class="mut"></div>
   <div class="row"><button class="pr" data-da="go" style="flex:1">Buat dokumen</button><button data-da="x">Tutup</button></div>
 </div></div>
@@ -173,8 +185,60 @@ const esc=t=>String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 function load(){try{return JSON.parse(localStorage.getItem('rp1'))}catch(e){return null}}
 function save(){try{localStorage.setItem('rp1',JSON.stringify(S))}catch(e){}}
 let S=load()||{event:'Event baru',prof:'foot',speed:3,color:'#e8590c',pts:[],pos:[],park:[],nid:1,view:[-0.3749,102.5456,15]};
-S.show=S.show||{rute:1,pos:1,park:1,alt:1};if(S.show.alt==null)S.show.alt=1;S.alt=S.alt||[];S.sign=S.sign||[];S.doc=S.doc||{tgl:'',latar:''};
-let tab='rute',arm=null,armSign=null,sel=null,dAlt=null,R={dist:0,names:[],legs:[],err:''},rid=0,tt;
+function normState(s){
+  s.show=Object.assign({rute:1,pos:1,park:1,alt:1,fas:1},s.show||{});
+  s.alt=s.alt||[];s.sign=s.sign||[];s.tutup=s.tutup||[];s.fas=s.fas||[];
+  s.doc=s.doc||{tgl:'',latar:''};
+  (s.pos||[]).forEach(p=>{
+    if(!p.inst){
+      const m=String(p.personil||'').match(/\d+/);
+      p.inst={dishub:m?+m[0]:2,lantas:0,polpp:0,lainnya:0};
+    }
+    syncPosText(p);
+  });
+  return s;
+}
+function syncPosText(p){
+  const ins=p.inst||{dishub:0,lantas:0,polpp:0,lainnya:0};
+  const tot=(+ins.dishub||0)+(+ins.lantas||0)+(+ins.polpp||0)+(+ins.lainnya||0);
+  const parts=[];
+  if(+ins.dishub)parts.push(ins.dishub+' Dishub');
+  if(+ins.lantas)parts.push(ins.lantas+' Satlantas');
+  if(+ins.polpp)parts.push(ins.polpp+' Satpol PP');
+  if(+ins.lainnya)parts.push(ins.lainnya+' Lainnya');
+  p.personil=tot+' org'+(parts.length?' ('+parts.join(', ')+')':'');
+  return tot;
+}
+function rekapPos(){
+  const r={tot:0,dishub:0,lantas:0,polpp:0,lainnya:0};
+  (S.pos||[]).forEach(p=>{
+    const ins=p.inst||{};
+    const d=+ins.dishub||0,l=+ins.lantas||0,pp=+ins.polpp||0,ln=+ins.lainnya||0;
+    r.dishub+=d;r.lantas+=l;r.polpp+=pp;r.lainnya+=ln;r.tot+=d+l+pp+ln;
+  });
+  return r;
+}
+normState(S);
+let HIST=[],lastSnap=JSON.stringify(S);
+function pushHist(){
+  const curSnap=JSON.stringify(S);
+  if(curSnap!==lastSnap){HIST.push(lastSnap);if(HIST.length>40)HIST.shift();lastSnap=curSnap}
+}
+function snapshotBefore(){
+  const curSnap=JSON.stringify(S);
+  if(!HIST.length||HIST[HIST.length-1]!==curSnap){HIST.push(curSnap);if(HIST.length>40)HIST.shift()}
+}
+function undo(){
+  if(!HIST.length){toast('Belum ada riwayat untuk diurungkan');return}
+  const prev=HIST.pop();
+  try{
+    S=normState(JSON.parse(prev));lastSnap=JSON.stringify(S);
+    sel=null;dAlt=null;dTutup=null;arm=null;cur();
+    save();draw();route();S.alt.forEach(routeAlt);ui();
+    toast('Perubahan diurungkan ('+HIST.length+' tersisa)');
+  }catch(e){}
+}
+let tab='rute',arm=null,armSign=null,armFas=null,sel=null,dAlt=null,dTutup=null,R={dist:0,names:[],legs:[],err:''},rid=0,tt;
 
 const map=L.map('map').setView([S.view[0],S.view[1]],S.view[2]);
 const osmA='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
@@ -184,12 +248,12 @@ const base={
 };
 base['OpenStreetMap'].addTo(map);
 L.control.layers(base,null,{position:'topright'}).addTo(map);
-const gK=L.layerGroup().addTo(map),gR=L.layerGroup().addTo(map),gA=L.layerGroup().addTo(map),gM=L.layerGroup().addTo(map),gP=L.layerGroup().addTo(map),gE=L.layerGroup().addTo(map);
+const gK=L.layerGroup().addTo(map),gR=L.layerGroup().addTo(map),gA=L.layerGroup().addTo(map),gM=L.layerGroup().addTo(map),gP=L.layerGroup().addTo(map),gF=L.layerGroup().addTo(map),gE=L.layerGroup().addTo(map);
 map.on('moveend',()=>{const c=map.getCenter();S.view=[c.lat,c.lng,map.getZoom()];save()});
 
 function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(tt);tt=setTimeout(()=>t.style.display='none',2600)}
 const ico=(cls,t,z,st)=>L.divIcon({className:'',html:`<div class="mk ${cls}" style="${st||''}">${t}</div>`,iconSize:[z,z],iconAnchor:[z/2,z/2]});
-const commit=()=>{save();draw();route();ui()};
+const commit=()=>{pushHist();save();draw();route();ui()};
 
 /* ---------- rute mengikuti jalan ---------- */
 const legsArr=()=>R.legs.length?R.legs:S.pts.slice(0,-1).map((p,i)=>[[p.lat,p.lng],[S.pts[i+1].lat,S.pts[i+1].lng]]);
@@ -284,20 +348,28 @@ function infoRute(){
   });
   return h;
 }
-const infoPos=()=>S.pos.length?S.pos.map((p,i)=>card('pos',p.id,'#14263b','P'+(i+1),p.name,[lb('Tugas',esc(p.tugas)),lb('Personil',esc(p.personil)),lb('Jam',esc(p.jam))])).join(''):'<div class="mut">Belum ada pos jaga. Tambah lewat tab Pos.</div>';
+const lenPts=pts=>pts.slice(1).reduce((s,q,i)=>s+map.distance(pts[i],q),0);
+function infoPos(){
+  if(!S.pos.length)return '<div class="mut">Belum ada pos jaga. Tambah lewat tab Pos.</div>';
+  const rk=rekapPos();
+  const sum=`<div class="tot"><b>Total: ${rk.tot} org</b><div class="mut" style="margin-top:2px">Dishub: <b>${rk.dishub}</b> &bull; Lantas: <b>${rk.lantas}</b><br>Satpol PP: <b>${rk.polpp}</b> &bull; Lain: <b>${rk.lainnya}</b></div></div>`;
+  return sum+S.pos.map((p,i)=>card('pos',p.id,'#14263b','P'+(i+1),p.name,[lb('Tugas',esc(p.tugas)),lb('Personil',esc(p.personil)),lb('Jam',esc(p.jam)),lb('Catatan',esc(p.ket||''))])).join('');
+}
 const infoPark=()=>S.park.length?S.park.map(a=>card('park',a.id,'#1c7ed6','Pk',a.name,[lb('Kapasitas',esc(a.kapasitas)),lb('Luas',' \u00b1'+Math.round(areaM(a.pts)).toLocaleString('id-ID')+' m\u00b2'),lb('Bentuk',a.pts.length+' titik sudut')])).join(''):'<div class="mut">Belum ada lahan parkir. Tambah lewat tab Parkir.</div>';
 function infoAlt(){
-  if(!S.alt.length&&!S.sign.length)return '<div class="mut">Belum ada pengalihan atau rambu. Tambah lewat tab Alih.</div>';
-  return S.alt.map((a,i)=>card('alt',a.id,a.color||'#7c3aed',i+1,'Pengalihan '+(i+1),[`<div class="cl">${esc(a.from||'...')} &rarr; ${esc(a.to||'...')}</div>`,lb('Jarak',AR[a.id]?(AR[a.id].dist/1000).toFixed(2)+' km':''),lb('Titik',a.pts.length)])).join('')
+  if(!S.alt.length&&!S.tutup.length&&!S.sign.length)return '<div class="mut">Belum ada pengalihan, garis penutup jalan, atau rambu. Tambah lewat tab Alih.</div>';
+  return S.tutup.map((t,i)=>card('tutup',t.id,'#dc2626','\u26d4',t.name||('Penutupan '+(i+1)),[lb('Status',esc(t.status||'Tutup Total')),lb('Jam',esc(t.jam||'-')),lb('Panjang',t.pts.length>1?Math.round(lenPts(t.pts))+' m':'-')  ])).join('')
+   +S.alt.map((a,i)=>card('alt',a.id,a.color||'#7c3aed',i+1,'Pengalihan '+(i+1),[`<div class="cl">${esc(a.from||'...')} &rarr; ${esc(a.to||'...')}</div>`,lb('Jarak',AR[a.id]?(AR[a.id].dist/1000).toFixed(2)+' km':''),lb('Titik',a.pts.length)])).join('')
    +S.sign.map(g=>card('sign',g.id,'transparent',signSvg(g.type,26),SGN[g.type],[lb('Keterangan',esc(g.note))])).join('');
 }
+const infoFas=()=>S.fas.length?S.fas.map(f=>card('fas',f.id,'transparent',fasSvg(f.type,26),f.name||FAS[f.type].n,[lb('Kategori',FAS[f.type].n),lb('Unit/PIC',esc(f.pic)),lb('Kontak/Ket',esc(f.kontak))])).join(''):'<div class="mut">Belum ada pin fasilitas darurat atau VIP. Tambah lewat tab Darurat.</div>';
 function info(){
   const e=$('#info');if(!e)return;
-  const on=[['rute','Rute'],['pos','Pos'],['park','Parkir'],['alt','Alih']].filter(x=>S.show[x[0]]);
-  if(!on.length){e.innerHTML='<div class="mut">Semua layer sedang disembunyikan. Aktifkan Rute, Pos, Parkir, atau Alih di sidebar.</div>';return}
+  const on=[['rute','Rute'],['pos','Pos'],['park','Parkir'],['alt','Alih & Tutup'],['fas','Darurat & VIP']].filter(x=>S.show[x[0]]);
+  if(!on.length){e.innerHTML='<div class="mut">Semua layer sedang disembunyikan. Aktifkan layer di sidebar.</div>';return}
   if(!on.some(x=>x[0]===dv))dv=on[0][0];
   const hd=on.length>1?`<div class="ih">${on.map(x=>`<button data-dv="${x[0]}" class="${dv===x[0]?'on':''}">${x[1]}</button>`).join('')}</div>`:'';
-  e.innerHTML=hd+'<div class="ib">'+(dv==='rute'?infoRute():dv==='pos'?infoPos():dv==='park'?infoPark():infoAlt())+'</div>';
+  e.innerHTML=hd+'<div class="ib">'+(dv==='rute'?infoRute():dv==='pos'?infoPos():dv==='park'?infoPark():dv==='alt'?infoAlt():infoFas())+'</div>';
 }
 $('#info').addEventListener('click',e=>{
   const v=e.target.closest('[data-dv]');
@@ -306,7 +378,7 @@ $('#info').addEventListener('click',e=>{
   if(c){
     const k=c.dataset.k,id=+c.dataset.id,o=S[k].find(x=>x.id===id);
     if(!o)return;
-    if(k==='park')map.fitBounds(L.latLngBounds(o.pts),{maxZoom:18,padding:[40,40]});
+    if(k==='park'||k==='tutup'){if(o.pts.length)map.fitBounds(L.latLngBounds(o.pts),{maxZoom:18,padding:[40,40]})}
     else if(k==='alt'){if(o.pts.length)map.fitBounds(L.latLngBounds(o.pts.map(p=>[p.lat,p.lng])),{maxZoom:18,padding:[40,40]})}
     else map.setView([o.lat,o.lng],Math.max(map.getZoom(),17));
     return;
@@ -321,7 +393,7 @@ $('#info').addEventListener('input',e=>{
 
 /* ---------- gambar marker, pos, parkir ---------- */
 function draw(){
-  gM.clearLayers();gP.clearLayers();gK.clearLayers();gE.clearLayers();gA.clearLayers();drawRoute();drawAlt();drawSign();
+  gM.clearLayers();gP.clearLayers();gK.clearLayers();gE.clearLayers();gA.clearLayers();gF.clearLayers();drawRoute();drawAlt();drawClose();drawSign();drawFas();
   let k=0;
   S.show.rute&&S.pts.forEach((p,i)=>{
     if(p.via&&tab!=='rute')return;
@@ -356,7 +428,7 @@ function draw(){
 const brg=(a,b)=>{const r=Math.PI/180,dl=(b[1]-a[1])*r,y=Math.sin(dl)*Math.cos(b[0]*r),x=Math.cos(a[0]*r)*Math.sin(b[0]*r)-Math.sin(a[0]*r)*Math.cos(b[0]*r)*Math.cos(dl);return(Math.atan2(y,x)/r+360)%360};
 const fwd=(p,b,m)=>{const r=b*Math.PI/180;return[p.lat+m*Math.cos(r)/111000,p.lng+m*Math.sin(r)/(111000*Math.cos(p.lat*Math.PI/180))]};
 const arr=(b,z,f,st,o)=>L.divIcon({className:'',html:`<svg width="${z}" height="${z}" viewBox="0 0 24 24" style="transform:rotate(${b}deg)${o?` translateY(${o}px)`:''};display:block"><path d="M12 1.5 22 22 12 17 2 22Z" fill="${f}" stroke="${st}" stroke-width="2" stroke-linejoin="round"/></svg>`,iconSize:[z,z],iconAnchor:[z/2,z/2]});
-const cur=()=>{map.getContainer().style.cursor=(dAlt!=null||arm)?'crosshair':''};
+const cur=()=>{map.getContainer().style.cursor=(dAlt!=null||dTutup!=null||arm)?'crosshair':''};
 const ALTC=['#7c3aed','#0891b2','#c026d3','#4d7c0f'],AR={},AT={};
 const ca=a=>{save();draw();routeAlt(a);ui()};
 const altLegs=a=>(AR[a.id]&&AR[a.id].legs.length===a.pts.length-1)?AR[a.id].legs:a.pts.slice(0,-1).map((p,i)=>[[p.lat,p.lng],[a.pts[i+1].lat,a.pts[i+1].lng]]);
@@ -445,19 +517,90 @@ function drawSign(){
     if(!ed)m.bindPopup('<b>'+esc(SGN[g.type])+'</b>'+(g.note?'<br>'+esc(g.note):''));
     else{
       m.on('dragend',()=>{const q=m.getLatLng();g.lat=q.lat;g.lng=q.lng;save()});
-      m.on('contextmenu',()=>{S.sign=S.sign.filter(x=>x!==g);save();draw();ui()});
+      m.on('contextmenu',()=>{pushHist();S.sign=S.sign.filter(x=>x!==g);save();draw();ui()});
     }
+  });
+}
+
+/* ---------- garis penutup jalan (barikade) ---------- */
+function drawClose(){
+  if(!S.show.alt)return;
+  const ed=tab==='alih';
+  S.tutup.forEach((t,ti)=>{
+    const n=t.pts.length;if(!n)return;
+    const lblTxt=`<b>\u26d4 ${esc(t.name||'Penutupan '+(ti+1))}</b><br>${esc(t.status||'Tutup Total')} &bull; ${esc(t.jam||'-')}`;
+    if(n>1){
+      const cas=L.polyline(t.pts,{color:'#fff',weight:14,opacity:.95,lineCap:'butt',lineJoin:'round',interactive:ed}).addTo(gA);
+      const baseLn=L.polyline(t.pts,{color:'#dc2626',weight:10,opacity:.95,lineCap:'butt',lineJoin:'round',interactive:!ed}).addTo(gA);
+      L.polyline(t.pts,{color:'#fef08a',weight:6,opacity:.95,dashArray:'10 10',lineCap:'butt',interactive:false}).addTo(gA);
+      if(!ed)baseLn.bindPopup(lblTxt);
+      baseLn.bindTooltip(`<span>\u26d4 ${esc(t.status||'Tutup')}: ${esc(t.name||'Jl. Ditutup')}</span>`,{permanent:false,direction:'top',className:'tt2'});
+      cas.on('click',e=>{
+        L.DomEvent.stopPropagation(e);
+        pushHist();
+        let b=0,m=1e12;
+        for(let i=0;i<n-1;i++){const mid=[(t.pts[i][0]+t.pts[i+1][0])/2,(t.pts[i][1]+t.pts[i+1][1])/2],d=map.distance(e.latlng,mid);if(d<m){m=d;b=i}}
+        t.pts.splice(b+1,0,[e.latlng.lat,e.latlng.lng]);save();draw();info();
+      });
+    }
+    t.pts.forEach((q,i)=>{
+      const isEnd=i===0||i===n-1;
+      const m=L.marker(q,{draggable:ed,keyboard:false,icon:isEnd?L.divIcon({className:'',html:`<div class="mk s" style="background:#dc2626;border-color:#fef08a;font-size:13px">\u26d4</div>`,iconSize:[24,24],iconAnchor:[12,12]}):ico('v','',12,'border-color:#dc2626')}).addTo(gA);
+      if(!ed)m.bindPopup(lblTxt);
+      else{
+        m.on('dragend',()=>{pushHist();const x=m.getLatLng();t.pts[i]=[x.lat,x.lng];save();draw();info()});
+        m.on('contextmenu',()=>{pushHist();t.pts.splice(i,1);save();draw();ui()});
+      }
+    });
+  });
+}
+
+/* ---------- pin fasilitas darurat & VIP ---------- */
+const FAS={
+  medis:{n:'Pos Medis / Ambulans',c:'#dc2626',b:'M20 4a16 16 0 1 0 0 32 16 16 0 0 0 0-32z',f:'<path d="M17 10h6v7h7v6h-7v7h-6v-7h-7v-6h7z" fill="#fff"/>'},
+  derek:{n:'Mobil Derek Dishub',c:'#0284c7',b:'M6 6h28a2 2 0 0 1 2 2v24a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z',f:'<path d="M9 25h14l4-6h4v6h2v3H9v-3zm3 4a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zm14 0a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM10 13l9 7h-3l-6-4.5V22H8v-9h2z" fill="#fff"/>'},
+  damkar:{n:'Unit Damkar',c:'#ea580c',b:'M20 3 35 11v12c0 8-6.5 13-15 15-8.5-2-15-7-15-15V11L20 3z',f:'<path d="M20 10c2 4 6 6 6 11a6 6 0 1 1-12 0c0-3 1.5-5.5 3-7 0 2 1.5 3 2 3-.5-2.5 0-5 1-7z" fill="#fef08a"/>'},
+  vip:{n:'Panggung / Tenda VIP',c:'#ca8a04',b:'M20 4a16 16 0 1 0 0 32 16 16 0 0 0 0-32z',f:'<path d="m20 9 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.3-6.2 3.3 1.2-6.8-5-4.9 6.9-1z" fill="#fef08a"/>'},
+  kumpul:{n:'Titik Kumpul Darurat',c:'#16a34a',b:'M6 6h28a2 2 0 0 1 2 2v24a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z',f:'<circle cx="20" cy="20" r="4" fill="#fff"/><path d="M10 10l6 6m0-5v5h-5M30 10l-6 6m0-5v5h5M10 30l6-6m0 5v-5h-5M30 30l-6-6m0 5v-5h5" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/>'},
+  komando:{n:'Posko Komando / Panitia',c:'#4f46e5',b:'M6 6h28a2 2 0 0 1 2 2v24a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z',f:'<path d="M13 10v20h2v-8h12l-3-4 3-4H15v-4h-2z" fill="#fff"/>'}
+};
+const fasSvg=(t,z)=>{const o=FAS[t]||FAS.medis;return `<svg xmlns="http://www.w3.org/2000/svg" width="${z}" height="${z}" viewBox="0 0 40 40"><path d="${o.b}" fill="${o.c}" stroke="#fff" stroke-width="2.5"/>${o.f}</svg>`};
+const FIMG={};
+const fImg=t=>{if(!FIMG[t]){const im=new Image();im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(fasSvg(t,80));FIMG[t]=im}return FIMG[t]};
+Object.keys(FAS).forEach(fImg);
+function drawFas(){
+  if(!S.show.fas)return;
+  const ed=tab==='fas';
+  S.fas.forEach(f=>{
+    const o=FAS[f.type]||FAS.medis;
+    const m=L.marker([f.lat,f.lng],{draggable:true,keyboard:false,icon:L.divIcon({className:'',html:`<div class="sg">${fasSvg(f.type,34)}</div>`,iconSize:[34,34],iconAnchor:[17,17]})}).addTo(gF);
+    m.bindTooltip(esc(f.name||o.n),{direction:'top',offset:[0,-14]});
+    m.bindPopup(`<b>${esc(f.name||o.n)}</b><br><span class="mut">${esc(o.n)}</span>`+(f.pic?'<br>Unit/PIC: '+esc(f.pic):'')+(f.kontak?'<br>'+esc(f.kontak):''));
+    m.on('dragend',()=>{pushHist();const q=m.getLatLng();f.lat=q.lat;f.lng=q.lng;save();info()});
+    if(ed)m.on('contextmenu',()=>{pushHist();S.fas=S.fas.filter(x=>x!==f);save();draw();ui()});
   });
 }
 
 /* ---------- peta: klik ---------- */
 map.on('click',e=>{
-  if(arm==='sign'){S.sign.push({id:S.nid++,type:armSign,lat:e.latlng.lat,lng:e.latlng.lng,note:''});S.show.alt=1;save();draw();ui();return}
-  if(arm==='pos'){
-    S.pos.push({id:S.nid++,name:'Pos baru',lat:e.latlng.lat,lng:e.latlng.lng,personil:'2 orang',tugas:'Pengamanan',jam:'07.00-11.00'});
-    S.show.pos=1;arm=null;map.getContainer().style.cursor='';commit();return;
+  if(arm==='fas'){
+    pushHist();
+    const o=FAS[armFas]||FAS.medis;
+    S.fas.push({id:S.nid++,type:armFas,name:o.n+' '+(S.fas.filter(x=>x.type===armFas).length+1),pic:'',kontak:'',lat:e.latlng.lat,lng:e.latlng.lng});
+    S.show.fas=1;save();draw();ui();return;
   }
-  if(tab==='alih'){const a=dAlt!=null&&S.alt.find(x=>x.id===dAlt);if(a){a.pts.push({lat:e.latlng.lat,lng:e.latlng.lng});S.show.alt=1;ca(a)}return}
+  if(arm==='sign'){pushHist();S.sign.push({id:S.nid++,type:armSign,lat:e.latlng.lat,lng:e.latlng.lng,note:''});S.show.alt=1;save();draw();ui();return}
+  if(arm==='pos'){
+    const p={id:S.nid++,name:'Pos '+(S.pos.length+1),lat:e.latlng.lat,lng:e.latlng.lng,inst:{dishub:2,lantas:0,polpp:0,lainnya:0},personil:'2 org (2 Dishub)',tugas:'Pengamanan & pengaturan lalin',jam:'07.00-11.00',ket:''};
+    S.pos.push(p);S.show.pos=1;arm=null;cur();commit();return;
+  }
+  if(tab==='alih'){
+    const t=dTutup!=null&&S.tutup.find(x=>x.id===dTutup);
+    if(t){pushHist();t.pts.push([e.latlng.lat,e.latlng.lng]);S.show.alt=1;save();draw();ui();return}
+    const a=dAlt!=null&&S.alt.find(x=>x.id===dAlt);
+    if(a){pushHist();a.pts.push({lat:e.latlng.lat,lng:e.latlng.lng});S.show.alt=1;ca(a)}
+    return;
+  }
   if(tab==='rute'){S.show.rute=1;S.pts.push({id:S.nid++,lat:e.latlng.lat,lng:e.latlng.lng,name:''});commit();return}
   if(tab==='parkir'&&sel){sel=null;draw();ui()}
 });
@@ -526,6 +669,9 @@ function addSimLayers(){
   SM.addLayer({id:'pk-x',type:'fill-extrusion',source:'pk',paint:{'fill-extrusion-color':'#1c7ed6','fill-extrusion-height':2.5,'fill-extrusion-opacity':.65}});
   SM.addSource('al',{type:'geojson',data:{type:'FeatureCollection',features:S.alt.filter(a=>a.pts.length>1).map(a=>({type:'Feature',properties:{c:a.color||'#7c3aed'},geometry:{type:'LineString',coordinates:ll([].concat(...altLegs(a)))}}))}});
   SM.addLayer({id:'al-l',type:'line',source:'al',paint:{'line-color':['get','c'],'line-width':5,'line-dasharray':[2,1.5]}});
+  SM.addSource('tp',{type:'geojson',data:{type:'FeatureCollection',features:S.tutup.filter(t=>t.pts.length>1).map(t=>({type:'Feature',properties:{},geometry:{type:'LineString',coordinates:ll(t.pts)}}))}});
+  SM.addLayer({id:'tp-b',type:'line',source:'tp',layout:{'line-cap':'butt','line-join':'round'},paint:{'line-color':'#dc2626','line-width':9}});
+  SM.addLayer({id:'tp-d',type:'line',source:'tp',layout:{'line-cap':'butt','line-join':'round'},paint:{'line-color':'#fef08a','line-width':5,'line-dasharray':[1.5,1.5]}});
 }
 function addSimMarkers(){
   sim.mk.forEach(m=>m.remove());sim.mk=[];sim.pm=[];
@@ -539,6 +685,8 @@ function addSimMarkers(){
     add(`<svg width="34" height="34" viewBox="0 0 24 24" style="display:block"><path d="M12 1.5 22 22 12 17 2 22Z" fill="${a.color||'#7c3aed'}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>`,q,{rotation:b,rotationAlignment:'map',pitchAlignment:'map'});
   });
   S.sign.forEach(g=>add(`<div style="filter:drop-shadow(0 2px 3px #0009)">${signSvg(g.type,36)}</div>`,[g.lat,g.lng]));
+  S.fas.forEach(f=>add(`<div style="filter:drop-shadow(0 2px 3px #0009)">${fasSvg(f.type,34)}</div>`,[f.lat,f.lng]));
+  S.tutup.forEach(t=>t.pts.forEach((q,i)=>{if(i===0||i===t.pts.length-1)add(`<div class="mk s" style="background:#dc2626;border-color:#fef08a">\u26d4</div>`,q)}));
   const c0=sim.C[0],pcv=document.createElement('canvas');
   pcv.width=pcv.height=180;pcv.style.pointerEvents='none';sim.pc=pcv.getContext('2d');
   sim.cv=new maplibregl.Marker({element:pcv}).setLngLat([c0[1],c0[0]]).addTo(SM);
@@ -821,7 +969,7 @@ async function cuteBuild(host,bd,say){
   let sd=12345;const rnd=()=>{sd=(sd*16807)%2147483647;return sd/2147483647};
   const sm=[];{let acc=0;rp.forEach((p,i)=>{if(i){acc+=Math.hypot(p[0]-rp[i-1][0],p[1]-rp[i-1][1]);if(acc<30)return;acc=0}sm.push(p)})}
   const parkW=S.park.map(a=>a.pts.map(p=>pr(p[0],p[1])));
-  const keep=[...S.pos.map(p=>pr(p.lat,p.lng)),...S.sign.map(g=>pr(g.lat,g.lng))];
+  const keep=[...S.pos.map(p=>pr(p.lat,p.lng)),...S.sign.map(g=>pr(g.lat,g.lng)),...S.fas.map(f=>pr(f.lat,f.lng)),...S.tutup.flatMap(t=>t.pts.map(q=>pr(q[0],q[1])))];
   const isWater=(x,z)=>{
     if(fl.sat)return false;
     const lng=L0+x/kx,lat=A0-z/ky,u=(tileX(lng,fl.z)-fl.tx0)*256,v=(tileY(lat,fl.z)-fl.ty0)*256;
@@ -888,6 +1036,25 @@ async function cuteBuild(host,bd,say){
     const cv=document.createElement('canvas');cv.width=cv.height=128;cv.getContext('2d').drawImage(sImg(g0.type),0,0,128,128);
     const sp=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(cv),transparent:true}));sp.scale.set(6,6,1);sp.position.set(0,8,0);g.add(sp);
     world.add(scal(g));
+  });
+  S.fas.forEach(f0=>{
+    const q=pr(f0.lat,f0.lng),o=FAS[f0.type]||FAS.medis,g=new T.Group();g.position.set(q[0],0,q[1]);
+    g.add(mesh(new T.CylinderGeometry(2.6,2.8,0.6,18),M(o.c),0,0.3,0));
+    const cv=document.createElement('canvas');cv.width=cv.height=128;cv.getContext('2d').drawImage(fImg(f0.type),0,0,128,128);
+    const sp=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(cv),transparent:true}));sp.scale.set(6.5,6.5,1);sp.position.set(0,7,0);g.add(sp);
+    const lb2=lbl(f0.name||o.n,o.c,'#ffffff',11,4.8);lb2.position.set(0,12.2,0);g.add(lb2);
+    world.add(scal(g));
+  });
+  S.tutup.forEach(t=>{
+    if(!t.pts.length)return;
+    const cs=t.pts.map(q=>pr(q[0],q[1]));
+    if(cs.length>1){const c1=[],c2=[];rib(cs,7.5,0.32,c1);rib(cs,5.2,0.36,c2);tri(c1,'#fef08a');tri(c2,'#dc2626')}
+    cs.forEach((q,i)=>{
+      if(i!==0&&i!==cs.length-1)return;
+      const g=new T.Group();g.position.set(q[0],0,q[1]);
+      g.add(mesh(new T.BoxGeometry(5.5,1.2,0.9),M('#dc2626'),0,1.6,0),mesh(new T.BoxGeometry(5.6,0.4,0.95),M('#fef08a'),0,1.6,0));
+      world.add(scal(g));
+    });
   });
   S.alt.forEach(a=>{
     if(a.pts.length<2)return;
@@ -1170,7 +1337,7 @@ $('#ax').addEventListener('click',()=>{
 });
 
 /* ---------- cetak gambar ---------- */
-const LBL={rute:'Rute',pos:'Pos jaga',park:'Parkir',alt:'Pengalihan'};
+const LBL={rute:'Rute',pos:'Pos jaga',park:'Parkir',alt:'Pengalihan & Penutupan',fas:'Darurat & VIP'};
 function snap(keys,o){
   const el=map.getContainer(),W=el.clientWidth,H=el.clientHeight,K=2,HD=(o&&o.clean)?0:60;
   const cv=document.createElement('canvas');cv.width=W*K;cv.height=(H+HD)*K;
@@ -1206,20 +1373,31 @@ function snap(keys,o){
       if(last){const q=P([p.lat,p.lng]),r=b*Math.PI/180;arrow([q[0]-32*Math.sin(r),q[1]+32*Math.cos(r)],b,30,col,'#fff')}else arrow(P(fwd(p,b,i?12:16)),b,24,'#fff',col)});
     const m=all[Math.floor(all.length/2)];pill((a.from||'...')+' \u2192 '+(a.to||'...'),m[0],m[1]-20,col);
   });
+  if(has('alt'))S.tutup.forEach((t,ti)=>{
+    if(!t.pts.length)return;
+    const all=t.pts.map(P);
+    if(all.length>1){line(all,'#fff',14);line(all,'#dc2626',10);line(all,'#fef08a',6,[10,10]);const m=all[Math.floor(all.length/2)];pill('\u26d4 '+(t.name||'Penutupan '+(ti+1))+' ('+(t.status||'Tutup')+')',m[0],m[1]-18,'#dc2626')}
+    all.forEach((q,i)=>{if(i===0||i===all.length-1){dot(q,11,'#dc2626','#fef08a',2.5);tx('\u26d4',q[0],q[1],'700 11px system-ui,sans-serif','#fff')}});
+  });
   if(has('alt'))S.sign.forEach(g=>{const im=sImg(g.type),q=P([g.lat,g.lng]);if(im.complete&&im.naturalWidth)c.drawImage(im,q[0]-18,q[1]-18,36,36)});
+  if(has('alt')&&S.tutup.length){lg.push(['Penutupan Jalan',1]);S.tutup.forEach((t,i)=>lg.push([cut('\u26d4 '+(t.name||'Penutupan '+(i+1))+' ('+(t.status||'Tutup')+', '+(t.jam||'-')+')',48)]))}
   if(has('alt')&&S.sign.length){lg.push(['Rambu',1]);S.sign.forEach(g=>lg.push([cut(SGN[g.type]+(g.note?': '+g.note:''),48)]))}
   if(has('alt')&&S.alt.length){lg.push(['Pengalihan',1]);S.alt.forEach((a,i)=>lg.push([cut((i+1)+'. '+(a.from||'...')+' \u2192 '+(a.to||'...'),48)]))}
+  if(has('fas')&&S.fas.length){
+    lg.push(['Darurat & VIP',1]);
+    S.fas.forEach(f=>{const im=fImg(f.type),q=P([f.lat,f.lng]),o=FAS[f.type]||FAS.medis;if(im.complete&&im.naturalWidth)c.drawImage(im,q[0]-17,q[1]-17,34,34);lg.push([cut((f.name||o.n)+(f.pic?' ('+f.pic+')':''),48)])});
+  }
   if(has('rute')&&S.pts.length>1){
     lg.push(['Rute: '+fmt(),1]);let k=0;
     S.pts.forEach((p,i)=>{if(p.via)return;k++;
       const q=P([p.lat,p.lng]);dot(q,13,i===0?'#14263b':i===S.pts.length-1?'#2f9e44':S.color,'#fff',2.5);tx(String(k),q[0],q[1],'700 12px system-ui,sans-serif','#fff');
       lg.push([cut(k+'. '+(p.name||'Titik '+k),48)])});
   }
-  if(has('pos')){lg.push(['Pos jaga',1]);S.pos.forEach((p,i)=>{
+  if(has('pos')&&S.pos.length){const rk=rekapPos();lg.push([`Pos jaga (Total ${rk.tot} org)`,1]);S.pos.forEach((p,i)=>{
     const q=P([p.lat,p.lng]);rr(q[0]-15,q[1]-15,30,30,8);c.fillStyle='#14263b';c.fill();c.strokeStyle='#fff';c.lineWidth=2;c.stroke();
     tx('P'+(i+1),q[0],q[1],'700 12px system-ui,sans-serif','#fff');
-    lg.push([cut('P'+(i+1)+' '+p.name+(p.personil?' ('+p.personil+')':''),48)])})}
-  const rows=lg.filter(l=>l[0]!=='Parkir'&&l[0]!=='Pengalihan'&&l[0]!=='Pos jaga'&&!/^Rute:/.test(l[0])||true).slice(0,16);
+    lg.push([cut('P'+(i+1)+' '+p.name+(p.personil?' - '+p.personil:''),48)])})}
+  const rows=lg.length>18?[...lg.slice(0,17),['+ '+(lg.length-17)+' keterangan lainnya...',1]]:lg;
   if(rows.length&&!(o&&o.clean)){
     c.font='12px system-ui,sans-serif';const w=Math.max(...rows.map(l=>c.measureText(l[0]).width))+20,h=rows.length*17+12,y0=H-h-26;
     rr(10,y0,w,h,8);c.fillStyle='rgba(255,255,255,.92)';c.fill();c.strokeStyle='#dbe2ea';c.lineWidth=1;c.stroke();
@@ -1237,12 +1415,12 @@ async function save1(keys,fm,name){
   const cv=snap(keys);
   await new Promise(r=>cv.toBlob(bl=>{const u=URL.createObjectURL(bl),l=document.createElement('a');l.href=u;l.download=(S.event||'rute').replace(/\W+/g,'-')+'-'+name+'.'+fm;l.click();setTimeout(()=>URL.revokeObjectURL(u),2000);r()},fm==='jpg'?'image/jpeg':'image/png',.92));
 }
-function openPrint(){['rute','pos','park','alt'].forEach(k=>$('#pk_'+k).checked=!!S.show[k]);$('#mdl').classList.add('on')}
+function openPrint(){['rute','pos','park','alt','fas'].forEach(k=>$('#pk_'+k).checked=!!S.show[k]);$('#mdl').classList.add('on')}
 $('#mdl').addEventListener('click',async e=>{
   const b=e.target.closest('[data-pa]');
   if(e.target.id==='mdl'||(b&&b.dataset.pa==='x')){$('#mdl').classList.remove('on');return}
   if(!b)return;
-  const ks=['rute','pos','park','alt'].filter(k=>$('#pk_'+k).checked);
+  const ks=['rute','pos','park','alt','fas'].filter(k=>$('#pk_'+k).checked);
   if(!ks.length){toast('Pilih minimal satu layer');return}
   const fm=$('#pf').value;
   try{
@@ -1278,10 +1456,11 @@ async function shot(target,asp,maxZ,keys){
 }
 function allBounds(){
   const a=[];
-  S.pts.forEach(p=>a.push([p.lat,p.lng]));S.pos.forEach(p=>a.push([p.lat,p.lng]));S.sign.forEach(g=>a.push([g.lat,g.lng]));
-  S.park.forEach(k=>k.pts.forEach(q=>a.push(q)));S.alt.forEach(k=>k.pts.forEach(p=>a.push([p.lat,p.lng])));
+  S.pts.forEach(p=>a.push([p.lat,p.lng]));S.pos.forEach(p=>a.push([p.lat,p.lng]));S.sign.forEach(g=>a.push([g.lat,g.lng]));S.fas.forEach(f=>a.push([f.lat,f.lng]));
+  S.park.forEach(k=>k.pts.forEach(q=>a.push(q)));S.alt.forEach(k=>k.pts.forEach(p=>a.push([p.lat,p.lng])));S.tutup.forEach(t=>t.pts.forEach(q=>a.push(q)));
   return a.length?L.latLngBounds(a):null;
 }
+const fasPng=t=>{const c=document.createElement('canvas');c.width=c.height=96;c.getContext('2d').drawImage(fImg(t),0,0,96,96);return c.toDataURL('image/png')};
 const DR=(x,y,w,h,fill,rad,line)=>({k:'r',x,y,w,h,fill,rad,line});
 const DT=(x,y,w,h,text,size,bold,color,align,valign)=>({k:'t',x,y,w,h,text:String(text==null?'':text),size,bold,color,align,valign});
 const DI=(x,y,w,h,data)=>({k:'i',x,y,w,h,data});
@@ -1335,9 +1514,10 @@ async function buildSlides(o,say){
   g.items.push(DT(0.6,1.2,7.4,0.3,'Latar belakang',12,1,'#64748b'),DT(0.6,1.5,7.4,2.3,cutT(S.doc.latar||'-',620),15,0,NV),
     DT(0.6,3.9,7.4,0.3,'Tanggal pelaksanaan',12,1,'#64748b'),DT(0.6,4.2,7.4,0.5,S.doc.tgl||'-',15,1,NV),
     DT(0.6,4.9,7.4,0.3,'Rencana rute',12,1,'#64748b'),DT(0.6,5.2,7.4,1.7,cutT(rute,330),15,0,NV));
-  [[stops.length,'Titik rute'],[S.pos.length,'Pos jaga'],[S.park.length,'Titik parkir'],[S.alt.length,'Pengalihan'+(S.sign.length?' ('+S.sign.length+' rambu)':'')]].forEach((t,i)=>{
-    const x=8.5+(i%2)*2.2,y=1.3+Math.floor(i/2)*2.7;
-    g.items.push(DR(x,y,2.05,2.5,'#f1f5f9',0.08),DT(x,y+0.35,2.05,1.0,t[0],44,1,NV,'center','middle'),DT(x+0.1,y+1.5,1.85,0.8,t[1],13,0,'#475569','center','top'));
+  const rk=rekapPos();
+  [[stops.length,'Titik rute'],[S.pos.length,S.pos.length?`Pos jaga (${rk.tot} personil)`:'Pos jaga'],[S.park.length,'Titik parkir'],[S.alt.length+S.tutup.length,`Rekayasa (${S.alt.length} alih, ${S.tutup.length} tutup)`],[rk.tot,`Total Personil\nDishub ${rk.dishub} | Lantas ${rk.lantas} | PolPP ${rk.polpp}`],[S.fas.length,'Fasilitas Darurat & VIP']].forEach((t,i)=>{
+    const x=8.5+(i%2)*2.2,y=1.2+Math.floor(i/2)*1.85;
+    g.items.push(DR(x,y,2.05,1.72,'#f1f5f9',0.08),DT(x,y+0.15,2.05,0.75,t[0],34,1,NV,'center','middle'),DT(x+0.08,y+0.92,1.89,0.72,t[1],11,0,'#475569','center','top'));
   });
 
   // gambaran peta satu layer, lalu detail per item
@@ -1375,10 +1555,20 @@ async function buildSlides(o,say){
     }
     chunk(items,4).forEach((c,j,a)=>cards(mk(ttl('Detail parkir',j,a)),c));
   }
-  if(o.alt&&(S.alt.length||S.sign.length)){
-    say('Memotret peta seluruh pengalihan...');
-    const all=[].concat(...S.alt.map(k=>k.pts.map(p=>[p.lat,p.lng])),S.sign.map(g=>[g.lat,g.lng]));
-    ovw('Peta pengalihan dan rambu',await shot(L.latLngBounds(all),OA,18,['alt']),S.alt.map((a,i)=>({n:i+1,bg:a.color||'#7c3aed',name:'Pengalihan '+(i+1),sub:cutT(a.from,18)+' > '+cutT(a.to,18)})),9,0.6);
+  if(o.alt&&(S.alt.length||S.tutup.length||S.sign.length)){
+    say('Memotret peta pengalihan & penutupan...');
+    const all=[].concat(...S.alt.map(k=>k.pts.map(p=>[p.lat,p.lng])),...S.tutup.map(t=>t.pts),S.sign.map(g=>[g.lat,g.lng]));
+    const rowsA=[...S.tutup.map((t,i)=>({n:'T'+(i+1),bg:'#dc2626',name:t.name||('Penutupan '+(i+1)),sub:(t.status||'Tutup Total')+', '+(t.jam||'-')})),...S.alt.map((a,i)=>({n:i+1,bg:a.color||'#7c3aed',name:'Pengalihan '+(i+1),sub:cutT(a.from,18)+' > '+cutT(a.to,18)}))];
+    ovw('Peta pengalihan dan penutupan jalan',await shot(L.latLngBounds(all),OA,18,['alt']),rowsA,9,0.6);
+    if(S.tutup.length){
+      const tItems=[];
+      for(let i=0;i<S.tutup.length;i++){
+        const t=S.tutup[i];say(`Memotret penutupan jalan ${i+1} dari ${S.tutup.length}...`);
+        const img=t.pts.length>1?await shot(L.latLngBounds(t.pts),asp,18,['alt']):t.pts.length?await shot(t.pts[0],asp,18,['alt']):await shot(L.latLngBounds(all),asp,16,['alt']);
+        tItems.push({img,bg:'#dc2626',badge:'T'+(i+1),title:cutT(t.name||('Penutupan '+(i+1)),34),rows:[['Status',cutT(t.status||'Tutup Total',40)],['Jam Berlaku',cutT(t.jam||'-',40)],['Panjang Ruas',t.pts.length>1?Math.round(lenPts(t.pts))+' m':'-']]});
+      }
+      chunk(tItems,4).forEach((c,j,a)=>cards(mk(ttl('Detail penutupan jalan',j,a)),c));
+    }
     const items=[];
     for(let i=0;i<S.alt.length;i++){
       const a=S.alt[i];say(`Memotret pengalihan ${i+1} dari ${S.alt.length}...`);
@@ -1391,6 +1581,17 @@ async function buildSlides(o,say){
       const s2=mk(ttl('Rambu pengalihan',j,a));
       c.forEach((gg,i)=>{const y=1.2+i*0.72;s2.items.push(DR(0.6,y,12.1,0.64,'#f8fafc',0.05,'#e2e8f0'),DI(0.75,y+0.04,0.56,0.56,signPng(gg.type)),DT(1.5,y,4.5,0.64,SGN[gg.type],14,1,NV,'left','middle'),DT(6.2,y,6.4,0.64,cutT(gg.note,90)||'-',12,0,'#475569','left','middle'))});
     });
+  }
+  if(o.fas&&S.fas.length){
+    say('Memotret peta fasilitas darurat & VIP...');
+    const bd=L.latLngBounds(S.fas.map(f=>[f.lat,f.lng]));
+    ovw('Peta fasilitas darurat dan VIP',await shot(bd,OA,18,['fas']),S.fas.map((f,i)=>{const fo=FAS[f.type]||FAS.medis;return{n:i+1,bg:fo.c,name:f.name||fo.n,sub:fo.n+(f.pic?' - '+cutT(f.pic,18):'')}}),9,0.6);
+    const items=[];
+    for(let i=0;i<S.fas.length;i++){
+      const f=S.fas[i],fo=FAS[f.type]||FAS.medis;say(`Memotret fasilitas ${i+1} dari ${S.fas.length}...`);
+      items.push({img:await shot([f.lat,f.lng],asp,18,['fas']),bg:fo.c,badge:'F'+(i+1),title:cutT(f.name||fo.n,34),rows:[['Kategori',fo.n],['Unit / PIC',cutT(f.pic,40)||'-'],['Kontak / Ket',cutT(f.kontak,46)||'-']]});
+    }
+    chunk(items,4).forEach((c,j,a)=>cards(mk(ttl('Detail fasilitas darurat & VIP',j,a)),c));
   }
   sl.forEach((s,i)=>{if(i)s.items.push(DT(12.1,7.08,0.7,0.3,String(i+1),10,0,'#64748b','right','middle'))});
   return sl;
@@ -1440,9 +1641,9 @@ $('#dlg').addEventListener('click',async e=>{
   const b=e.target.closest('[data-da]');
   if(e.target.id==='dlg'||(b&&b.dataset.da==='x')){if(!busy)$('#dlg').classList.remove('on');return}
   if(!b||busy)return;
-  const o={pptx:$('#dg_pptx').checked,pdf:$('#dg_pdf').checked,rute:$('#dg_rute').checked,pos:$('#dg_pos').checked,park:$('#dg_park').checked,alt:$('#dg_alt').checked};
+  const o={pptx:$('#dg_pptx').checked,pdf:$('#dg_pdf').checked,rute:$('#dg_rute').checked,pos:$('#dg_pos').checked,park:$('#dg_park').checked,alt:$('#dg_alt').checked,fas:$('#dg_fas').checked};
   if(!o.pptx&&!o.pdf){toast('Pilih PPTX atau PDF');return}
-  if(S.pts.length<2&&!S.pos.length&&!S.park.length&&!S.alt.length){toast('Belum ada data untuk dibuat dokumen');return}
+  if(S.pts.length<2&&!S.pos.length&&!S.park.length&&!S.alt.length&&!S.tutup.length&&!S.fas.length){toast('Belum ada data untuk dibuat dokumen');return}
   busy=true;
   const c0=map.getCenter(),z0=map.getZoom(),say=m=>{$('#dp').textContent=m};
   try{
@@ -1457,16 +1658,92 @@ $('#dlg').addEventListener('click',async e=>{
   finally{busy=false;map.setView(c0,z0,{animate:false})}
 });
 
+/* ---------- ekspor tabel SPT Excel (.xlsx / .xls) ---------- */
+async function exportSptExcel(){
+  if(!S.pos.length&&!S.tutup.length&&!S.alt.length&&!S.fas.length){toast('Belum ada data pos atau rekayasa untuk diekspor');return}
+  const rk=rekapPos(),ev=S.event||'Event',tgl=S.doc.tgl||new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+  const fn=(ev.replace(/\W+/g,'-')||'event')+'-SPT-Dishub';
+  const rowsPos=[
+    ['LAMPIRAN SURAT PERINTAH TUGAS (SPT) PENGAMANAN & REKAYASA LALU LINTAS'],
+    ['Dinas Perhubungan Kabupaten Indragiri Hulu'],
+    ['Kegiatan: '+ev,'','','','Tanggal: '+tgl],
+    [],
+    ['No','Kode Pos','Nama / Lokasi Pos','Uraian Tugas','Jam Bertugas','Dishub (Org)','Satlantas (Org)','Satpol PP (Org)','Instansi Lain (Org)','Total Personil','Nama Petugas / Catatan','Koordinat','Link Google Maps']
+  ];
+  S.pos.forEach((p,i)=>{
+    const ins=p.inst||{dishub:0,lantas:0,polpp:0,lainnya:0};
+    const d=+ins.dishub||0,l=+ins.lantas||0,pp=+ins.polpp||0,ln=+ins.lainnya||0,tot=d+l+pp+ln;
+    const ko=`${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}`;
+    const url=`https://www.google.com/maps?q=${p.lat.toFixed(6)},${p.lng.toFixed(6)}`;
+    rowsPos.push([i+1,'P'+(i+1),p.name||('Pos '+(i+1)),p.tugas||'-',p.jam||'-',d,l,pp,ln,tot,p.ket||'-',ko,url]);
+  });
+  rowsPos.push(['','','TOTAL PERSONIL SELURUH POS','','',rk.dishub,rk.lantas,rk.polpp,rk.lainnya,rk.tot,'','','']);
+
+  const rowsRek=[
+    ['DAFTAR PENUTUPAN JALAN, PENGALIHAN ARUS & RAMBU LALU LINTAS - '+ev],
+    [],
+    ['Kategori','Kode','Nama Ruas / Titik','Status / Arah Pengalihan','Jam Berlaku / Keterangan','Panjang / Jarak','Koordinat Awal','Link Google Maps']
+  ];
+  S.tutup.forEach((t,i)=>{
+    const q=t.pts[0]||[0,0];
+    rowsRek.push(['Penutupan Jalan','T'+(i+1),t.name||('Penutupan '+(i+1)),t.status||'Tutup Total',t.jam||'-',t.pts.length>1?Math.round(lenPts(t.pts))+' m':'-',t.pts.length?`${q[0].toFixed(6)}, ${q[1].toFixed(6)}`:'-',t.pts.length?`https://www.google.com/maps?q=${q[0].toFixed(6)},${q[1].toFixed(6)}`:'-']);
+  });
+  S.alt.forEach((a,i)=>{
+    const q=a.pts[0]||{lat:0,lng:0};
+    rowsRek.push(['Pengalihan Arus','A'+(i+1),'Pengalihan '+(i+1),(a.from||'...')+' -> '+(a.to||'...'),a.pts.length+' titik belokan',AR[a.id]?(AR[a.id].dist/1000).toFixed(2)+' km':'-',a.pts.length?`${q.lat.toFixed(6)}, ${q.lng.toFixed(6)}`:'-',a.pts.length?`https://www.google.com/maps?q=${q.lat.toFixed(6)},${q.lng.toFixed(6)}`:'-']);
+  });
+  S.sign.forEach((g,i)=>{
+    rowsRek.push(['Rambu Lalu Lintas','R'+(i+1),SGN[g.type]||g.type,'Terpasang',g.note||'-','-',`${g.lat.toFixed(6)}, ${g.lng.toFixed(6)}`,`https://www.google.com/maps?q=${g.lat.toFixed(6)},${g.lng.toFixed(6)}`]);
+  });
+
+  const rowsFas=[
+    ['DAFTAR FASILITAS DARURAT, VIP & KANTONG PARKIR - '+ev],
+    [],
+    ['Kategori','Kode','Nama Lokasi / Unit','Penanggung Jawab / Kapasitas','Kontak / Luas Lahan','Koordinat','Link Google Maps']
+  ];
+  S.fas.forEach((f,i)=>{
+    const o=FAS[f.type]||FAS.medis;
+    rowsFas.push([o.n,'F'+(i+1),f.name||o.n,f.pic||'-',f.kontak||'-',`${f.lat.toFixed(6)}, ${f.lng.toFixed(6)}`,`https://www.google.com/maps?q=${f.lat.toFixed(6)},${f.lng.toFixed(6)}`]);
+  });
+  S.park.forEach((a,i)=>{
+    const q=a.pts[0]||[0,0];
+    rowsFas.push(['Kantong Parkir','Pk'+(i+1),a.name||('Parkir '+(i+1)),a.kapasitas||'-','\u00b1'+Math.round(areaM(a.pts)).toLocaleString('id-ID')+' m\u00b2',`${q[0].toFixed(6)}, ${q[1].toFixed(6)}`,`https://www.google.com/maps?q=${q[0].toFixed(6)},${q[1].toFixed(6)}`]);
+  });
+
+  try{
+    await loadJs('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js','XLSX');
+    const wb=XLSX.utils.book_new();
+    const ws1=XLSX.utils.aoa_to_sheet(rowsPos);
+    ws1['!cols']=[{wch:5},{wch:9},{wch:26},{wch:28},{wch:15},{wch:13},{wch:14},{wch:14},{wch:16},{wch:14},{wch:26},{wch:22},{wch:42}];
+    XLSX.utils.book_append_sheet(wb,ws1,'SPT Pos Jaga');
+    const ws2=XLSX.utils.aoa_to_sheet(rowsRek);
+    ws2['!cols']=[{wch:18},{wch:8},{wch:26},{wch:28},{wch:24},{wch:14},{wch:22},{wch:42}];
+    XLSX.utils.book_append_sheet(wb,ws2,'Penutupan & Pengalihan');
+    const ws3=XLSX.utils.aoa_to_sheet(rowsFas);
+    ws3['!cols']=[{wch:24},{wch:8},{wch:26},{wch:26},{wch:22},{wch:22},{wch:42}];
+    XLSX.utils.book_append_sheet(wb,ws3,'Darurat VIP & Parkir');
+    XLSX.writeFile(wb,fn+'.xlsx');
+    toast('Tabel SPT (.xlsx) berhasil diunduh');
+  }catch(e){
+    const xmlSheet=(name,rows)=>`<Worksheet ss:Name="${esc(name)}"><Table>`+rows.map(r=>'<Row>'+r.map(c=>`<Cell><Data ss:Type="${typeof c==='number'?'Number':'String'}">${esc(c)}</Data></Cell>`).join('')+'</Row>').join('')+'</Table></Worksheet>';
+    const xml=`<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">${xmlSheet('SPT Pos Jaga',rowsPos)}${xmlSheet('Penutupan & Pengalihan',rowsRek)}${xmlSheet('Darurat VIP & Parkir',rowsFas)}</Workbook>`;
+    const u=URL.createObjectURL(new Blob([xml],{type:'application/vnd.ms-excel'})),l=document.createElement('a');
+    l.href=u;l.download=fn+'.xls';l.click();setTimeout(()=>URL.revokeObjectURL(u),2000);
+    toast('Tabel SPT (.xls) berhasil diunduh');
+  }
+}
+
 /* ---------- sidebar ---------- */
 function ui(){
-  $('#hd').innerHTML=`<input class="ev" data-g="event" value="${esc(S.event)}" placeholder="Nama event">
+  const rk=rekapPos();
+  $('#hd').innerHTML=`<div class="row" style="align-items:center"><input class="ev" style="flex:1" data-g="event" value="${esc(S.event)}" placeholder="Nama event"><button data-a="undo" title="Urungkan perubahan terakhir (Ctrl+Z)" ${HIST.length?'':'disabled'} style="opacity:${HIST.length?1:.45};white-space:nowrap;font-size:12px;padding:5px 8px">&#8630; Undo${HIST.length?' ('+HIST.length+')':''}</button></div>
   <div class="row"><input id="q" placeholder="Cari lokasi, misal: Alun-alun Rengat"><button data-a="cari">Cari</button></div>
   <div class="g3"><select data-g="prof"><option value="foot">Jalan kaki / pawai</option><option value="car">Mobil</option><option value="bike">Sepeda</option></select>
   <input data-g="speed" type="number" min="0.5" step="0.5" value="${S.speed}" title="Kecepatan km/jam"><input data-g="color" type="color" value="${S.color}" title="Warna rute"></div>
-  <div id="tg">${[['rute','Rute'],['pos','Pos'],['park','Parkir'],['alt','Alih']].map(t=>`<button data-a="tog" data-v="${t[0]}" class="${S.show[t[0]]?'on':''}" title="Tampilkan atau sembunyikan ${t[1]}">${S.show[t[0]]?'●':'○'} ${t[1]}</button>`).join('')}</div>
+  <div id="tg">${[['rute','Rute'],['pos','Pos'],['park','Parkir'],['alt','Alih'],['fas','Darurat']].map(t=>`<button data-a="tog" data-v="${t[0]}" class="${S.show[t[0]]?'on':''}" title="Tampilkan atau sembunyikan ${t[1]}">${S.show[t[0]]?'●':'○'} ${t[1]}</button>`).join('')}</div>
   <div class="st" id="stats"></div>`;
   $('#hd [data-g=prof]').value=S.prof;
-  $('#tabs').innerHTML=[['rute','Rute'],['pos','Pos ('+S.pos.length+')'],['parkir','Parkir ('+S.park.length+')'],['alih','Alih ('+S.alt.length+')']].map(t=>`<button data-a="tab" data-v="${t[0]}" class="${tab===t[0]?'on':''}">${t[1]}</button>`).join('');
+  $('#tabs').innerHTML=[['rute','Rute'],['pos','Pos ('+S.pos.length+')'],['parkir','Parkir ('+S.park.length+')'],['alih','Alih ('+(S.alt.length+S.tutup.length)+')'],['fas','VIP ('+S.fas.length+')']].map(t=>`<button data-a="tab" data-v="${t[0]}" class="${tab===t[0]?'on':''}">${t[1]}</button>`).join('');
   let h='';
   if(tab==='rute'){
     h=`<div class="mut">Klik peta untuk menambah titik. Klik garis rute untuk merapikan agar menempel ke jalan; ini hanya titik bantu, bukan titik baru. Seret titik untuk memindah, klik kanan untuk menghapus.</div>`;
@@ -1474,63 +1751,116 @@ function ui(){
     S.pts.forEach(p=>{if(p.via)return;k++;h+=`<div class="row"><b style="width:22px">${k}</b><input data-t="pts" data-id="${p.id}" data-f="name" value="${esc(p.name)}" placeholder="Titik ${k}"><button class="dg" data-a="del" data-t="pts" data-id="${p.id}">Hapus</button></div>`});
     h+=`<button class="dg" data-a="clr">Hapus semua rute</button>`;
   }else if(tab==='pos'){
-    h=`<button class="pr" data-a="addpos">${arm==='pos'?'Klik peta untuk menaruh pos...':'+ Tambah pos'}</button>`;
-    S.pos.forEach((p,i)=>h+=`<div class="card"><div class="row"><b style="align-self:center">P${i+1}</b><input data-t="pos" data-id="${p.id}" data-f="name" value="${esc(p.name)}"></div>
-    <input data-t="pos" data-id="${p.id}" data-f="tugas" value="${esc(p.tugas)}" placeholder="Tugas">
-    <div class="row"><input data-t="pos" data-id="${p.id}" data-f="personil" value="${esc(p.personil)}" placeholder="Personil"><input data-t="pos" data-id="${p.id}" data-f="jam" value="${esc(p.jam)}" placeholder="Jam"></div>
-    <div class="row"><button data-a="goto" data-t="pos" data-id="${p.id}">Lihat di peta</button><button class="dg" data-a="del" data-t="pos" data-id="${p.id}">Hapus</button></div></div>`);
+    h=`<div class="rkp"><b>Rekap Personil: <span id="rk_tot">${rk.tot}</span> Orang (${S.pos.length} Pos)</b>
+    <div class="pills" id="rk_pills"><span>Dishub: ${rk.dishub}</span><span>Satlantas: ${rk.lantas}</span><span>Satpol PP: ${rk.polpp}</span><span>Lainnya: ${rk.lainnya}</span></div></div>
+    <div class="row"><button class="pr" style="flex:1" data-a="addpos">${arm==='pos'?'Klik peta untuk menaruh pos...':'+ Tambah pos jaga'}</button><button data-a="spt" title="Unduh tabel Surat Perintah Tugas (.xlsx)">&#128196; Tabel SPT Excel</button></div>`;
+    S.pos.forEach((p,i)=>{
+      const ins=p.inst||{dishub:0,lantas:0,polpp:0,lainnya:0};
+      h+=`<div class="card"><div class="row"><b style="align-self:center">P${i+1}</b><input data-t="pos" data-id="${p.id}" data-f="name" value="${esc(p.name)}" placeholder="Nama / Lokasi Pos"></div>
+      <div class="row"><input data-t="pos" data-id="${p.id}" data-f="tugas" value="${esc(p.tugas)}" placeholder="Uraian tugas"><input style="max-width:115px" data-t="pos" data-id="${p.id}" data-f="jam" value="${esc(p.jam)}" placeholder="Jam jaga"></div>
+      <div class="g4">
+        <label>Dishub<input type="number" min="0" data-ins="dishub" data-id="${p.id}" value="${+ins.dishub||0}"></label>
+        <label>Satlantas<input type="number" min="0" data-ins="lantas" data-id="${p.id}" value="${+ins.lantas||0}"></label>
+        <label>Satpol PP<input type="number" min="0" data-ins="polpp" data-id="${p.id}" value="${+ins.polpp||0}"></label>
+        <label>Lainnya<input type="number" min="0" data-ins="lainnya" data-id="${p.id}" value="${+ins.lainnya||0}"></label>
+      </div>
+      <input data-t="pos" data-id="${p.id}" data-f="ket" value="${esc(p.ket||'')}" placeholder="Nama koordinator / catatan petugas (opsional)">
+      <div class="row"><span class="mut" style="flex:1;align-self:center" id="ptxt_${p.id}">${esc(p.personil)}</span><button data-a="goto" data-t="pos" data-id="${p.id}">Lihat</button><button class="dg" data-a="del" data-t="pos" data-id="${p.id}">Hapus</button></div></div>`;
+    });
   }else if(tab==='alih'){
-    h=`<div class="mut">Klik peta untuk menandai titik awal, titik belokan, lalu titik akhir (ujung panah besar). Seret titik untuk memindah, klik kanan untuk menghapus, klik garis untuk menambah belokan. Jalur mengikuti jalan untuk mobil.</div><button class="pr" data-a="addalt">+ Tambah pengalihan</button>`;
+    h=`<div class="mut"><b>Garis Penutup Jalan (Barikade)</b>: tandai segmen ruas jalan yang ditutup/disterilisasi. Klik peta berurutan untuk menggambar garis blokade.</div>
+    <button class="pr" data-a="addtutup" style="background:#dc2626;border-color:#dc2626">+ Tambah garis penutup jalan</button>`;
+    S.tutup.forEach((t,i)=>h+=`<div class="card ${dTutup===t.id?'on':''}">
+      <div class="row"><b style="align-self:center;color:#dc2626;white-space:nowrap">&#9940; Tutup ${i+1}</b><input data-t="tutup" data-id="${t.id}" data-f="name" value="${esc(t.name)}" placeholder="Nama jalan ditutup..."></div>
+      <div class="row"><select data-t="tutup" data-id="${t.id}" data-f="status"><option value="Tutup Total" ${t.status==='Tutup Total'?'selected':''}>Tutup Total</option><option value="Sterilisasi" ${t.status==='Sterilisasi'?'selected':''}>Sterilisasi</option><option value="Buka-Tutup" ${t.status==='Buka-Tutup'?'selected':''}>Buka-Tutup Situasional</option><option value="Contraflow" ${t.status==='Contraflow'?'selected':''}>Contraflow / Satu Arah</option></select>
+      <input style="max-width:120px" data-t="tutup" data-id="${t.id}" data-f="jam" value="${esc(t.jam||'')}" placeholder="Jam (06.30-10.00)"></div>
+      <div class="mut">${t.pts.length} titik${t.pts.length>1?' &bull; '+Math.round(lenPts(t.pts))+' m':''}</div>
+      <div class="row"><button data-a="drawtutup" data-id="${t.id}">${dTutup===t.id?'Selesai menggambar':'Gambar / lanjutkan'}</button><button class="dg" data-a="del" data-t="tutup" data-id="${t.id}">Hapus</button></div></div>`);
+    h+=`<div class="mut" style="margin-top:6px"><b>Rute Pengalihan Arus</b>: klik peta untuk titik awal, belokan, hingga titik akhir. Jalur mengikuti jalan mobil.</div><button class="pr" data-a="addalt">+ Tambah rute pengalihan</button>`;
     S.alt.forEach((a,i)=>h+=`<div class="card ${dAlt===a.id?'on':''}"><div class="row"><b style="align-self:center;white-space:nowrap">Pengalihan ${i+1}</b><input type="color" style="width:44px;height:32px;padding:0" data-t="alt" data-id="${a.id}" data-f="color" value="${a.color}"></div>
     <input data-t="alt" data-id="${a.id}" data-f="from" value="${esc(a.from)}" placeholder="Dari jalan...">
     <input data-t="alt" data-id="${a.id}" data-f="to" value="${esc(a.to)}" placeholder="Ke jalan...">
     <div class="mut">${a.pts.length} titik${AR[a.id]?' &bull; '+(AR[a.id].dist/1000).toFixed(2)+' km':''}</div>
     <div class="row"><button data-a="drawalt" data-id="${a.id}">${dAlt===a.id?'Selesai menggambar':'Gambar / lanjutkan'}</button><button class="dg" data-a="del" data-t="alt" data-id="${a.id}">Hapus</button></div></div>`);
-    h+=`<div class="mut" style="margin-top:6px"><b>Rambu</b>: klik ikon, lalu klik peta. Klik ikon yang sama lagi untuk berhenti.</div><div class="pal">${Object.keys(SGN).map(t=>`<button class="sgb ${arm==='sign'&&armSign===t?'on':''}" data-a="sgn" data-v="${t}" title="${SGN[t]}">${signSvg(t,32)}</button>`).join('')}</div>`;
+    h+=`<div class="mut" style="margin-top:6px"><b>Rambu Lalu Lintas</b>: klik ikon, lalu klik peta. Klik ikon yang sama lagi untuk berhenti.</div><div class="pal">${Object.keys(SGN).map(t=>`<button class="sgb ${arm==='sign'&&armSign===t?'on':''}" data-a="sgn" data-v="${t}" title="${SGN[t]}">${signSvg(t,32)}</button>`).join('')}</div>`;
     S.sign.forEach(g=>h+=`<div class="card"><div class="row"><span style="flex:none;width:28px">${signSvg(g.type,28)}</span><b style="align-self:center">${SGN[g.type]}</b></div><input data-t="sign" data-id="${g.id}" data-f="note" value="${esc(g.note)}" placeholder="Keterangan (opsional)"><div class="row"><button data-a="goto" data-t="sign" data-id="${g.id}">Lihat di peta</button><button class="dg" data-a="del" data-t="sign" data-id="${g.id}">Hapus</button></div></div>`);
+  }else if(tab==='fas'){
+    h=`<div class="mut"><b>Pin Fasilitas Darurat &amp; VIP</b>: pilih jenis fasilitas di bawah, lalu klik lokasi pada peta. Klik tombol yang sama lagi untuk berhenti menaruh pin.</div>
+    <div class="pal6">${Object.keys(FAS).map(k=>`<button class="fbtn ${arm==='fas'&&armFas===k?'on':''}" data-a="fas" data-v="${k}" title="${FAS[k].n}"><span style="flex:none">${fasSvg(k,26)}</span><span>${FAS[k].n.split('/')[0].trim()}</span></button>`).join('')}</div>`;
+    S.fas.forEach(f=>{
+      const o=FAS[f.type]||FAS.medis;
+      h+=`<div class="card"><div class="row"><span style="flex:none;width:28px">${fasSvg(f.type,28)}</span><input data-t="fas" data-id="${f.id}" data-f="name" value="${esc(f.name)}" placeholder="${esc(o.n)}"></div>
+      <div class="row"><input data-t="fas" data-id="${f.id}" data-f="pic" value="${esc(f.pic||'')}" placeholder="Unit / Penanggung jawab"><input data-t="fas" data-id="${f.id}" data-f="kontak" value="${esc(f.kontak||'')}" placeholder="No. HP / Keterangan"></div>
+      <div class="row"><button data-a="goto" data-t="fas" data-id="${f.id}">Lihat di peta</button><button class="dg" data-a="del" data-t="fas" data-id="${f.id}">Hapus</button></div></div>`;
+    });
   }else{
     h=`<button class="pr" data-a="addpark">+ Tambah parkir</button>`;
     S.park.forEach(a=>h+=`<div class="card ${sel===a.id?'on':''}"><input data-t="park" data-id="${a.id}" data-f="name" value="${esc(a.name)}">
     <input data-t="park" data-id="${a.id}" data-f="kapasitas" value="${esc(a.kapasitas)}" placeholder="Kapasitas, misal 40 bus / 120 motor">
     <div class="row"><button data-a="edit" data-id="${a.id}">${sel===a.id?'Selesai edit':'Edit bentuk'}</button><button class="dg" data-a="del" data-t="park" data-id="${a.id}">Hapus</button></div></div>`);
   }
-  h+=`<div class="row" style="margin-top:6px"><button data-a="doc" class="pr" style="flex:1">Buat dokumen (PPTX / PDF)</button></div><div class="row"><button data-a="ani" style="flex:1">Animasi rute (video)</button></div><div class="row"><button data-a="sim" class="pr" style="flex:1">Simulasi 3D</button><button data-a="prt" style="flex:1">Cetak gambar</button></div><div class="row"><button data-a="exp" style="flex:1">Simpan JSON</button><button data-a="imp" style="flex:1">Buka JSON</button></div><input id="fi" type="file" accept=".json" hidden>`;
+  h+=`<div class="row" style="margin-top:6px"><button data-a="doc" class="pr" style="flex:1">Buat dokumen (PPTX / PDF)</button><button data-a="spt" style="flex:1">Tabel SPT (Excel)</button></div><div class="row"><button data-a="ani" style="flex:1">Animasi rute (video)</button></div><div class="row"><button data-a="sim" class="pr" style="flex:1">Simulasi 3D</button><button data-a="prt" style="flex:1">Cetak gambar</button></div><div class="row"><button data-a="exp" style="flex:1">Simpan JSON</button><button data-a="imp" style="flex:1">Buka JSON</button></div><input id="fi" type="file" accept=".json" hidden>`;
   $('#sc').innerHTML=h;stats();
 }
 const A=document.querySelector('aside');
+A.addEventListener('focusin',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')snapshotBefore()});
 A.addEventListener('input',e=>{
   const d=e.target.dataset;
   if(d.g){S[d.g]=d.g==='speed'?(parseFloat(e.target.value)||3):e.target.value;save();if(d.g==='prof')route();if(d.g==='color')drawRoute();stats()}
-  else if(d.t){const o=S[d.t].find(x=>x.id==d.id);if(o){o[d.f]=e.target.value;save();draw();info()}}
+  else if(d.ins){
+    const p=S.pos.find(x=>x.id==d.id);
+    if(p){
+      p.inst=p.inst||{dishub:0,lantas:0,polpp:0,lainnya:0};
+      p.inst[d.ins]=Math.max(0,parseInt(e.target.value)||0);
+      syncPosText(p);save();info();
+      const pt=$('#ptxt_'+p.id);if(pt)pt.textContent=p.personil;
+      const rk=rekapPos(),rt=$('#rk_tot'),rp=$('#rk_pills');
+      if(rt)rt.textContent=rk.tot;
+      if(rp)rp.innerHTML=`<span>Dishub: ${rk.dishub}</span><span>Satlantas: ${rk.lantas}</span><span>Satpol PP: ${rk.polpp}</span><span>Lainnya: ${rk.lainnya}</span>`;
+    }
+  }
+  else if(d.t){const o=S[d.t].find(x=>x.id==d.id);if(o){o[d.f]=e.target.value;save();info();if(d.f==='color')draw()}}
 });
-A.addEventListener('change',e=>{if(e.target.dataset.t)draw()});
+A.addEventListener('change',e=>{if(e.target.dataset.t||e.target.dataset.ins){lastSnap=JSON.stringify(S);draw()}});
 A.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='q')cari()});
+window.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'&&!e.shiftKey){
+    const tg=document.activeElement&&document.activeElement.tagName;
+    if(tg==='INPUT'||tg==='TEXTAREA')return;
+    e.preventDefault();undo();
+  }
+});
 A.addEventListener('click',e=>{
   const b=e.target.closest('[data-a]');if(!b)return;
   const d=b.dataset,a=d.a;
-  if(a==='tab'){tab=d.v;arm=null;sel=null;dAlt=null;cur();draw();ui()}
-  else if(a==='addpos'){arm=arm?null:'pos';map.getContainer().style.cursor=arm?'crosshair':'';ui()}
+  if(a==='undo')undo();
+  else if(a==='tab'){tab=d.v;arm=null;sel=null;dAlt=null;dTutup=null;cur();draw();ui()}
+  else if(a==='addpos'){arm=arm==='pos'?null:'pos';dAlt=null;dTutup=null;cur();ui()}
   else if(a==='addpark')addPark();
   else if(a==='edit'){sel=sel==+d.id?null:+d.id;draw();ui()}
-  else if(a==='del'){S[d.t]=S[d.t].filter(x=>x.id!=d.id);if(sel==d.id)sel=null;if(dAlt==d.id){dAlt=null;cur()}delete AR[d.id];commit()}
-  else if(a==='goto'){const p=S[d.t].find(x=>x.id==d.id);map.setView([p.lat,p.lng],17)}
-  else if(a==='clr'){if(confirm('Hapus semua titik rute?')){S.pts=[];commit()}}
-  else if(a==='addalt'){const n2={id:S.nid++,color:ALTC[S.alt.length%ALTC.length],pts:[]};S.alt.push(n2);S.show.alt=1;dAlt=n2.id;cur();save();draw();ui();toast('Klik peta: titik awal, titik belokan, lalu titik akhir. Tekan Selesai bila sudah.')}
-  else if(a==='drawalt'){dAlt=dAlt==+d.id?null:+d.id;cur();ui()}
+  else if(a==='del'){pushHist();S[d.t]=S[d.t].filter(x=>x.id!=d.id);if(sel==d.id)sel=null;if(dAlt==d.id)dAlt=null;if(dTutup==d.id)dTutup=null;cur();delete AR[d.id];save();draw();route();ui()}
+  else if(a==='goto'){const p=S[d.t].find(x=>x.id==d.id);if(p)map.setView([p.lat,p.lng],17)}
+  else if(a==='clr'){if(confirm('Hapus semua titik rute?')){pushHist();S.pts=[];commit()}}
+  else if(a==='addtutup'){pushHist();const n2={id:S.nid++,name:'Jl. Ditutup '+(S.tutup.length+1),status:'Tutup Total',jam:'06.30-10.00',pts:[]};S.tutup.push(n2);S.show.alt=1;dTutup=n2.id;dAlt=null;arm=null;cur();save();draw();ui();toast('Klik peta berurutan untuk menggambar garis penutup jalan.')}
+  else if(a==='drawtutup'){dTutup=dTutup==+d.id?null:+d.id;if(dTutup)dAlt=null;arm=null;cur();ui()}
+  else if(a==='addalt'){pushHist();const n2={id:S.nid++,color:ALTC[S.alt.length%ALTC.length],pts:[]};S.alt.push(n2);S.show.alt=1;dAlt=n2.id;dTutup=null;arm=null;cur();save();draw();ui();toast('Klik peta: titik awal, titik belokan, lalu titik akhir. Tekan Selesai bila sudah.')}
+  else if(a==='drawalt'){dAlt=dAlt==+d.id?null:+d.id;if(dAlt)dTutup=null;arm=null;cur();ui()}
   else if(a==='tog'){S.show[d.v]=S.show[d.v]?0:1;save();draw();ui()}
   else if(a==='cari')cari();
+  else if(a==='spt')exportSptExcel();
   else if(a==='exp'){const u=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'})),l=document.createElement('a');l.href=u;l.download=(S.event||'rute').replace(/\W+/g,'-')+'.json';l.click();URL.revokeObjectURL(u)}
   else if(a==='prt')openPrint();
   else if(a==='doc')openDoc();
   else if(a==='ani')openAni();
   else if(a==='sim')openSim();
-  else if(a==='sgn'){arm=(arm==='sign'&&armSign===d.v)?null:'sign';armSign=d.v;cur();ui();if(arm)toast('Klik peta untuk menaruh rambu')}
+  else if(a==='sgn'){arm=(arm==='sign'&&armSign===d.v)?null:'sign';armSign=d.v;dAlt=null;dTutup=null;cur();ui();if(arm)toast('Klik peta untuk menaruh rambu')}
+  else if(a==='fas'){arm=(arm==='fas'&&armFas===d.v)?null:'fas';armFas=d.v;dAlt=null;dTutup=null;cur();ui();if(arm)toast('Klik peta untuk menaruh '+FAS[d.v].n)}
   else if(a==='imp')$('#fi').click();
 });
 A.addEventListener('change',e=>{
   if(e.target.id!=='fi')return;
   const f=e.target.files[0];if(!f)return;
-  f.text().then(t=>{try{const j=JSON.parse(t);if(!Array.isArray(j.pts)||!Array.isArray(j.pos)||!Array.isArray(j.park))throw 0;S=Object.assign(S,j);S.alt=j.alt||[];S.sign=j.sign||[];S.doc=j.doc||{tgl:'',latar:''};S.show=Object.assign({rute:1,pos:1,park:1,alt:1},j.show);sel=null;dAlt=null;commit();S.alt.forEach(routeAlt);map.setView([S.view[0],S.view[1]],S.view[2]);toast('Data dibuka')}catch(x){toast('File JSON tidak dikenali')}});
+  f.text().then(t=>{try{const j=JSON.parse(t);if(!Array.isArray(j.pts)||!Array.isArray(j.pos)||!Array.isArray(j.park))throw 0;pushHist();S=normState(Object.assign(S,j));sel=null;dAlt=null;dTutup=null;commit();S.alt.forEach(routeAlt);map.setView([S.view[0],S.view[1]],S.view[2]);toast('Data dibuka')}catch(x){toast('File JSON tidak dikenali')}});
 });
 async function cari(){
   const q=$('#q').value.trim();if(!q)return;
